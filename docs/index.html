@@ -1,0 +1,1183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Model Receipt · who actually answered?</title>
+<meta name="description" content="When a safety classifier flags a request, Claude Code can finish the session on an older model. See it in 115 real VulcanBench sessions, then print a receipt for your own.">
+<meta property="og:title" content="Model Receipt · who actually answered?">
+<meta property="og:description" content="115 real Claude Code sessions, and a script that prints a receipt for yours.">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://raw.githubusercontent.com/guoziyu415/model-receipt/main/docs/banner.png">
+<meta property="og:url" content="https://code415.dev/demos/2026-09-27/model-receipt">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#E9F0F3; --surface:#FFFFFF; --ink:#132029; --muted:#52646E; --line:#D0DCE2;
+  --fox:#D2601C; --fox-soft:#FCE6D6; --tort:#23805D; --tort-soft:#D3EEE2; --owl:#8A6A1C; --owl-soft:#F6EBCB;
+  --flag:#C4364E; --chip:#DEE8ED; --chip-on:#132029; --chip-on-ink:#FFFFFF;
+  --scene-top:#DDE9EF; --scene-bottom:#C9DBE3; --floor:#F4F7F8; --floor-side:#AFC4CE; --focus:#2E6BD6;
+  --shadow:0 1px 2px rgba(19,32,41,.06),0 8px 24px rgba(19,32,41,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D161C; --surface:#14212A; --ink:#E3ECF0; --muted:#97A9B3; --line:#24343E;
+    --fox:#F28C4E; --fox-soft:#3B2618; --tort:#56C49A; --tort-soft:#15342A; --owl:#E8C25E; --owl-soft:#3A3016;
+    --flag:#F06C80; --chip:#1B2A34; --chip-on:#E3ECF0; --chip-on-ink:#0D161C;
+    --scene-top:#1A2C37; --scene-bottom:#101D25; --floor:#2A3F4B; --floor-side:#1A2A33; --focus:#7FA8FF;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D161C; --surface:#14212A; --ink:#E3ECF0; --muted:#97A9B3; --line:#24343E;
+  --fox:#F28C4E; --fox-soft:#3B2618; --tort:#56C49A; --tort-soft:#15342A; --owl:#E8C25E; --owl-soft:#3A3016;
+  --flag:#F06C80; --chip:#1B2A34; --chip-on:#E3ECF0; --chip-on-ink:#0D161C;
+  --scene-top:#1A2C37; --scene-bottom:#101D25; --floor:#2A3F4B; --floor-side:#1A2A33; --focus:#7FA8FF;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 "Nunito Sans",system-ui,-apple-system,sans-serif;margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:16px;padding-block:32px 56px;display:flex;flex-direction:column;gap:22px}
+
+header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px 28px;align-items:end}
+@media (max-width:760px){header{grid-template-columns:minmax(0,1fr)}}
+.eyebrow{font:500 12.5px "DM Mono",ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+h1{font:700 clamp(32px,5.4vw,52px)/1.02 "Fredoka","Nunito Sans",sans-serif;margin:0 0 10px;letter-spacing:-.01em;text-wrap:balance}
+.lede{margin:0;max-width:62ch;color:var(--muted);text-wrap:pretty}
+.lede b{color:var(--ink)}
+.cast{display:flex;flex-direction:column;gap:8px;min-width:230px}
+.who{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;align-items:center;font-size:14px;line-height:1.3}
+.who .dot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:700 14px "Fredoka",sans-serif}
+.who strong{display:block;font:600 15px "Fredoka",sans-serif}
+.who span{color:var(--muted)}
+.who.owl .dot{background:var(--owl-soft);color:var(--owl)}
+.who.fox .dot{background:var(--fox-soft);color:var(--fox)}
+.who.tort .dot{background:var(--tort-soft);color:var(--tort)}
+
+.stage{position:relative;width:100%;aspect-ratio:2/1;max-height:580px;border-radius:22px;overflow:hidden;background:linear-gradient(var(--scene-top),var(--scene-bottom));border:1px solid var(--line);box-shadow:var(--shadow);touch-action:pan-y;cursor:grab;user-select:none}
+.stage:active{cursor:grabbing}
+.stage canvas{display:block;width:100%;height:100%}
+@media (max-width:640px){.stage{aspect-ratio:1/0.84;border-radius:16px}}
+.tag{position:absolute;left:0;top:0;pointer-events:none;font:600 13px "Fredoka",sans-serif;padding:3px 10px 3px 8px;border-radius:999px;white-space:nowrap;background:var(--surface);color:var(--ink);border:1.5px solid var(--line);box-shadow:var(--shadow);display:flex;gap:6px;align-items:center;will-change:transform}
+.tag::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.tag b{font:500 12px "DM Mono",monospace;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+.tag.fox{--c:var(--fox);border-color:color-mix(in srgb,var(--fox) 55%,var(--line))}
+.tag.tort{--c:var(--tort);border-color:color-mix(in srgb,var(--tort) 55%,var(--line))}
+.tag.owl{--c:var(--owl);border-color:color-mix(in srgb,var(--owl) 55%,var(--line))}
+.hud{position:absolute;left:14px;top:14px;right:14px;display:flex;justify-content:space-between;gap:10px;pointer-events:none;flex-wrap:wrap}
+.pill{font:500 12.5px "DM Mono",monospace;background:color-mix(in srgb,var(--surface) 88%,transparent);border:1px solid var(--line);border-radius:10px;padding:6px 10px;color:var(--ink);font-variant-numeric:tabular-nums;backdrop-filter:blur(6px)}
+.prog{display:flex;align-items:center;gap:10px}
+.prog .track{width:120px;height:6px;border-radius:3px;background:var(--chip);overflow:hidden;display:flex}
+.prog .track i{display:block;height:100%}
+.hint{position:absolute;right:14px;bottom:12px;font:500 12px "DM Mono",monospace;color:var(--muted);pointer-events:none}
+.drop{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--bg) 78%,transparent);border:3px dashed var(--fox);border-radius:22px;font:600 22px "Fredoka",sans-serif;color:var(--ink)}
+
+.controls{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between}
+.group{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.label{font:600 12px "Nunito Sans",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.chip{font:600 14px "Nunito Sans",sans-serif;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:999px;padding:6px 14px;min-height:36px;cursor:pointer;transition:background .15s,color .15s}
+.chip:hover{border-color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--chip-on);color:var(--chip-on-ink);border-color:var(--chip-on)}
+.btn{font:600 14px "Nunito Sans",sans-serif;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:7px 14px;min-height:36px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--fox);border-color:var(--fox);color:#fff}
+.btn.primary:hover{filter:brightness(1.05)}
+button:focus-visible,select:focus-visible,label.btn:focus-within,.row:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.src{font:500 12.5px "DM Mono",monospace;color:var(--muted);margin:-8px 0 0;overflow-wrap:anywhere}
+.err{color:var(--flag);font-weight:700;margin:0}
+
+.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:680px){.board{grid-template-columns:minmax(0,1fr)}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px}
+.tile .k{font:600 12px "Nunito Sans",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tile .v{font:600 34px/1.05 "Fredoka",sans-serif;font-variant-numeric:tabular-nums}
+.tile .s{font:400 13px "DM Mono",monospace;color:var(--muted);font-variant-numeric:tabular-nums}
+.tile .meter{height:6px;border-radius:3px;background:var(--chip);overflow:hidden;position:relative}
+.tile .meter i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;transition:width .3s}
+.tile .meter u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.55}
+.tile.fox .v{color:var(--fox)} .tile.fox .meter i{background:var(--fox)}
+.tile.tort .v{color:var(--tort)} .tile.tort .meter i{background:var(--tort)}
+.tile.owl .meter i{background:var(--owl)}
+
+section.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+h2{font:600 21px "Fredoka",sans-serif;margin:0}
+.sub{margin:-8px 0 0;color:var(--muted);font-size:14.5px;max-width:70ch}
+.rows{display:flex;flex-direction:column;gap:4px}
+.row,.axis{display:grid;grid-template-columns:minmax(0,10em) minmax(0,1fr) minmax(0,12em);gap:14px;align-items:center}
+.row{border:0;background:none;padding:6px 8px;border-radius:10px;cursor:pointer;text-align:left;color:var(--ink);font:inherit}
+.row:hover{background:color-mix(in srgb,var(--chip) 60%,transparent)}
+.row[aria-pressed="true"]{background:var(--chip)}
+.row .name{font:600 14.5px "Nunito Sans",sans-serif;overflow-wrap:anywhere;display:flex;justify-content:space-between;gap:8px}
+.row .name em{font:500 13px "DM Mono",monospace;font-style:normal;color:var(--tort);font-variant-numeric:tabular-nums}
+.row .meta{font:400 12.5px "DM Mono",monospace;color:var(--muted);font-variant-numeric:tabular-nums}
+.bar{height:20px;border-radius:6px;background:var(--fox);position:relative;overflow:hidden}
+.bar span{position:absolute;right:0;top:0;bottom:0;background:var(--tort)}
+.axis{font:400 11.5px "DM Mono",monospace;color:var(--muted);padding-inline:8px}
+.ticks{position:relative;height:14px}
+.ticks span{position:absolute;transform:translateX(-50%)}
+.ticks span:first-child{transform:none} .ticks span:last-child{transform:translateX(-100%)}
+@media (max-width:640px){.row,.axis{grid-template-columns:minmax(0,1fr);gap:6px} .axis>div:first-child,.axis>div:last-child{display:none}}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend span::before{content:"";width:11px;height:11px;border-radius:3px;background:var(--c)}
+
+.how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:820px){.how{grid-template-columns:minmax(0,1fr)}}
+.step{display:flex;flex-direction:column;gap:8px}
+.step .cmd{margin-top:auto}
+.step h3{font:600 16.5px "Fredoka",sans-serif;margin:0;display:flex;gap:8px;align-items:center}
+.step h3 i{font:600 12px "DM Mono",monospace;font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--chip-on);color:var(--chip-on-ink)}
+.step p{margin:0;color:var(--muted);font-size:14.5px}
+.cmd{display:flex;gap:6px;align-items:stretch;background:var(--chip);border-radius:10px;padding:4px 4px 4px 10px}
+.cmd code{flex:1;min-width:0;font:12.5px/1.5 "DM Mono",ui-monospace,monospace;padding:6px 0;overflow-x:auto;white-space:nowrap}
+.cmd button{font:600 12.5px "Nunito Sans",sans-serif;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:0 10px;cursor:pointer;min-height:30px}
+code.inl{font:13px "DM Mono",ui-monospace,monospace;background:var(--chip);border-radius:5px;padding:1px 5px;overflow-wrap:anywhere}
+footer{font-size:13.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:4px}
+footer a{color:inherit}
+
+.topnav{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font:500 13px "DM Mono",ui-monospace,monospace;color:var(--muted)}
+.topnav a{color:inherit;text-decoration:none}
+.topnav a:hover{color:var(--ink)}
+.langs{display:flex;gap:6px}
+.langs button{font:500 12.5px "DM Mono",monospace;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;padding:4px 9px;cursor:pointer}
+.langs button[aria-pressed="true"]{background:var(--chip-on);color:var(--chip-on-ink);border-color:var(--chip-on)}
+.ctas{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+a.btn{text-decoration:none}
+.who.tort .dot,.who.fox .dot,.who.owl .dot{font-size:13px}
+.stagewrap{position:relative}
+.receipt{position:absolute;left:16px;top:58px;width:250px;background:#FFFDF6;color:#1B1A17;border-radius:4px 4px 0 0;padding:14px 14px 18px;font:12.5px/1.45 "DM Mono",ui-monospace,monospace;box-shadow:0 10px 30px rgba(0,0,0,.18);transform-origin:top center;clip-path:polygon(0 0,100% 0,100% calc(100% - 6px),95% 100%,90% calc(100% - 6px),85% 100%,80% calc(100% - 6px),75% 100%,70% calc(100% - 6px),65% 100%,60% calc(100% - 6px),55% 100%,50% calc(100% - 6px),45% 100%,40% calc(100% - 6px),35% 100%,30% calc(100% - 6px),25% 100%,20% calc(100% - 6px),15% 100%,10% calc(100% - 6px),5% 100%,0 calc(100% - 6px));font-variant-numeric:tabular-nums;pointer-events:none;display:none}
+.receipt.show{display:block}
+.receipt .rh{text-align:center;font:600 14px "DM Mono",monospace;letter-spacing:.14em}
+.receipt .rs{text-align:center;color:#6B665C;font-size:11.5px;margin-bottom:6px}
+.receipt .rl{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:baseline}
+.receipt .rl span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.receipt .rl.two{grid-template-columns:minmax(0,1fr) auto}
+.receipt .rr{border-top:1.5px dashed #B9B2A3;margin:7px 0}
+.receipt .res{margin-top:6px;text-align:center;font-weight:500;letter-spacing:.08em;padding:3px 0;border:1.5px solid currentColor;border-radius:3px}
+.receipt .res.ok{color:#1F7A55}
+.receipt .res.bad{color:#B3263A}
+.receipt .rf{text-align:center;color:#6B665C;font-size:11px;margin-top:8px;letter-spacing:.1em}
+.receipt .ln:not(.on){display:none}
+@media (max-width:760px){
+  .receipt{position:static;width:auto;max-width:360px;margin:12px auto 0}
+}
+.board .tile .s b{color:var(--ink);font-weight:500}
+.strips{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px}
+@media (max-width:820px){.strips{gap:10px}}
+.scol{display:flex;flex-direction:column;gap:4px;min-width:0}
+.scol h3{font:600 16px "Fredoka",sans-serif;margin:0 0 2px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.scol h3 small{font:500 12px "DM Mono",monospace;color:var(--muted);white-space:nowrap}
+.scol .foot{font:400 12.5px "DM Mono",monospace;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+.scol .foot b{color:var(--ink);font-weight:500}
+.strip{display:grid;grid-template-columns:minmax(0,1fr) 14px;gap:6px;align-items:center;border:0;background:none;padding:2px 0;cursor:pointer;border-radius:4px}
+.strip{height:15px;padding:0}
+.strip>span:last-child{height:12px;display:flex;align-items:center}
+.strip .bar2{display:flex;gap:2px;height:9px}
+.strip .bar2 i{display:block;height:100%;border-radius:3px;min-width:2px}
+.strip .bar2 i.main{background:var(--fox)}
+.strip .bar2 i.auto{background:var(--tort)}
+.strip .bar2 i.you{background:var(--muted)}
+.strip svg{width:12px;height:12px;display:block}
+.strip:hover .bar2,.strip:focus-visible .bar2,.strip[aria-pressed="true"] .bar2{outline:2px solid var(--ink);outline-offset:2px;border-radius:3px}
+.strip:focus-visible{outline:none}
+.legend span.x::before{background:none;content:"✕";color:var(--flag);width:auto;height:auto;font-weight:700}
+.legend span.you{--c:var(--muted)}
+.tip{position:fixed;z-index:20;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:13px/1.45 "Nunito Sans",sans-serif;box-shadow:var(--shadow);max-width:260px;font-variant-numeric:tabular-nums}
+.tip b{font-family:"Fredoka",sans-serif;font-weight:600}
+.tip .m{font:12px "DM Mono",monospace;color:var(--muted)}
+.findings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:820px){.findings{grid-template-columns:minmax(0,1fr)}}
+.find .big{font:600 30px/1.1 "Fredoka",sans-serif;font-variant-numeric:tabular-nums}
+.find .big.fox{color:var(--fox)} .find .big.tort{color:var(--tort)} .find .big.flag{color:var(--flag)}
+.find p{margin:6px 0 0;color:var(--muted);font-size:14.5px}
+.note{margin:0;color:var(--muted);font-size:14px;border-left:3px solid var(--line);padding-left:12px}
+.note b{color:var(--ink)}
+.cmdrow{display:flex;flex-direction:column;gap:8px}
+html.rec .topnav,html.rec header .ctas,html.rec .controls,html.rec .src,html.rec .board,html.rec section,html.rec footer,html.rec .hint{display:none!important}
+@media (max-width:560px){
+.strips{gap:6px}
+.scol h3{font-size:13px;flex-direction:column;gap:0}
+.scol h3 small{font-size:10.5px}
+.scol .foot{font-size:10.5px}
+.strip{grid-template-columns:minmax(0,1fr) 9px;gap:3px;height:12px}
+.strip .bar2{height:7px;gap:1px}
+.strip svg{width:9px;height:9px}
+.strip>span:last-child{height:9px}
+.hud .pill{font-size:11px;padding:4px 8px}
+.prog .track{width:56px}
+}
+</style>
+</head>
+<body>
+<!--RECEIPT_DATA-->
+<div class="wrap">
+  <nav class="topnav">
+    <a href="https://code415.dev/demos" id="backlink">code415.dev/demos</a>
+    <div class="langs" id="langs"><button type="button" data-l="en" aria-pressed="true">EN</button><button type="button" data-l="zh" aria-pressed="false">中文</button></div>
+  </nav>
+
+  <header>
+    <div>
+      <div class="eyebrow" data-i="eyebrow">Open source · Claude Code and Codex</div>
+      <h1 data-i="h1">Model Receipt</h1>
+      <p class="lede" data-i="lede" data-html>When a safety classifier flags a request, Claude Code can hand the rest of the session to an older model. Watch it happen in <b>115 real sessions</b> from VulcanBench, then print a receipt for your own.</p>
+      <div class="ctas"><a class="btn primary" href="#yours" data-i="ctaMine">Print my receipt</a><a class="btn" href="https://github.com/guoziyu415/model-receipt" target="_blank" rel="noopener noreferrer" data-i="ctaGh">Code on GitHub</a></div>
+    </div>
+    <div class="cast" aria-label="The cast">
+      <div class="who owl"><div class="dot">1</div><div><strong data-i="castOwlT">The owl watches</strong><span data-i="castOwl">the safety classifier, which only steps in to refuse a request</span></div></div>
+      <div class="who fox"><div class="dot">2</div><div><strong data-i="castFoxT">The fox answers</strong><span id="castFox">Opus 5.5, the model you picked</span></div></div>
+      <div class="who tort"><div class="dot">3</div><div><strong data-i="castTortT">The tortoise takes over</strong><span id="castTort">Opus 4.8, for the rest of the session</span></div></div>
+    </div>
+  </header>
+
+  <div class="stagewrap">
+    <div class="stage" id="stage" role="img" aria-label="3D scene: replies ride a belt past an owl to a fox. Only when the owl refuses a request does a tortoise take every reply for the rest of the session. A receipt prints at the end.">
+      <div class="hud">
+        <div class="pill" id="hudRun">Loading scene</div>
+        <div class="pill prog"><span id="hudN"></span><span class="track"><i id="hudFox" style="background:var(--fox);width:0"></i><i id="hudTort" style="background:var(--tort);width:0"></i></span></div>
+      </div>
+      <div class="tag owl" id="tagOwl"><span data-i="tagOwl">Safety classifier</span></div>
+      <div class="tag fox" id="tagFox"><span id="tagFoxName">Opus 5.5</span> <b id="tagFoxN">0</b></div>
+      <div class="tag tort" id="tagTort"><span id="tagTortName">Opus 4.8</span> <b id="tagTortN">0</b></div>
+      <div class="hint" data-i="hint">drag to turn</div>
+      <div class="drop" id="drop" hidden data-i="drop">Drop model-receipt.json here</div>
+    </div>
+    <div class="receipt" id="receipt" aria-live="polite"></div>
+  </div>
+
+  <div class="controls">
+    <div class="group" role="group" aria-labelledby="chipsLabel"><span class="label" id="chipsLabel">Effort level</span><span class="group" id="chips"></span></div>
+    <div class="group">
+      <button class="btn" id="play" type="button" aria-pressed="false">Pause</button>
+      <button class="btn" id="next" type="button" data-i="next">Next session</button>
+      <select class="btn" id="speed" aria-label="Speed">
+        <option value="1">1×</option>
+        <option value="2" selected>2×</option>
+        <option value="4">4×</option>
+      </select>
+      <label class="btn primary" for="file"><span data-i="load">Load my receipt</span><input id="file" type="file" accept=".json,application/json" hidden></label>
+      <button class="btn" id="sample" type="button" data-i="trySample">Try a sample receipt</button>
+      <button class="btn" id="demo" type="button" hidden data-i="backDemo">Back to VulcanBench</button>
+    </div>
+  </div>
+  <p class="src" id="src"></p>
+  <p class="err" id="err" role="alert" hidden></p>
+
+  <div class="board">
+    <div class="tile fox"><span class="k" id="kFox">Answered by Opus 5.5</span><span class="v" id="vFox">0%</span><div class="meter"><i id="mFox" style="width:0"></i></div><span class="s" id="sFox"></span></div>
+    <div class="tile tort"><span class="k" id="kTort">Finished by Opus 4.8</span><span class="v" id="vTort">0%</span><div class="meter"><i id="mTort" style="width:0"></i></div><span class="s" id="sTort"></span></div>
+    <div class="tile owl"><span class="k" id="kRes">Tasks passed</span><span class="v" id="vRes">0</span><div class="meter"><i id="mRes" style="width:0"></i></div><span class="s" id="sRes"></span></div>
+  </div>
+
+  <section class="card" aria-labelledby="stripTitle">
+    <h2 id="stripTitle">115 real sessions</h2>
+    <p class="sub" id="stripSub">Each line is one Claude Code session, left to right. Click a line to replay it above.</p>
+    <div class="legend" id="legend"></div>
+    <div class="strips" id="strips"></div>
+  </section>
+
+  <section class="card" aria-labelledby="findTitle" id="findings">
+    <h2 id="findTitle" data-i="findTitle">What the 115 sessions show</h2>
+    <div class="findings">
+      <div class="find"><div class="big fox">$8.75 <span style="font-size:18px;color:var(--muted)">vs</span> $2.84</div><p data-i="f1">Max effort cost 3 times as much per task as medium, took twice as long, and passed fewer tasks: 21 of 23 against 23 of 23.</p></div>
+      <div class="find"><div class="big tort">72%</div><p data-i="f2">of the money spent at max effort went to Opus 4.8. In 12 of 23 max sessions the classifier stepped in, mostly in the first fifth of the session, and Opus 4.8 did the rest.</p></div>
+      <div class="find"><div class="big flag">4 of 4</div><p data-i="f3">failed tasks at high, extra high and max had a safety classifier step in. The 6 failures at low effort were Opus 5.5 on its own.</p></div>
+    </div>
+    <p class="note" data-i="caveat" data-html><b>Read this before you share it.</b> All 30 handoffs were in the cyber category. These tasks rebuild old binaries, which looks a lot like reverse engineering, so ordinary coding may never trigger it. Each task ran once per level, so a gap of 2 tasks is within noise. The receipt below tells you what happens in your own sessions.</p>
+  </section>
+
+  <section class="card" aria-labelledby="useTitle" id="yours">
+    <h2 id="useTitle" data-i="useTitle">Print your own receipt</h2>
+    <p class="sub" data-i="useSub">One Python file, no installs. It reads the logs Claude Code and Codex already keep on your computer.</p>
+    <div class="how">
+      <div class="step">
+        <h3><i>1</i><span data-i="s1t">Get the script</span></h3>
+        <p data-i="s1">Download it from GitHub, or clone the repo.</p>
+        <div class="cmd"><code id="c0">curl -O https://raw.githubusercontent.com/guoziyu415/model-receipt/main/model_receipt.py</code><button type="button" data-copy="c0">Copy</button></div>
+      </div>
+      <div class="step">
+        <h3><i>2</i><span data-i="s2t">Print the receipt</span></h3>
+        <p data-i="s2">It prints a receipt in your terminal and saves model-receipt.json next to it.</p>
+        <div class="cmd"><code id="c1">python3 model_receipt.py</code><button type="button" data-copy="c1">Copy</button></div>
+      </div>
+      <div class="step">
+        <h3><i>3</i><span data-i="s3t">Watch it in 3D</span></h3>
+        <p data-i="s3">Run view to open this page with your data, or drop model-receipt.json on the scene above. The file is read in your browser and never uploaded.</p>
+        <div class="cmd"><code id="c2">python3 model_receipt.py view</code><button type="button" data-copy="c2">Copy</button></div>
+      </div>
+    </div>
+    <p class="note" data-i="priv" data-html><b>What it reads:</b> model names, reply counts, effort level, output token counts, timestamps and project folder names. <b>What it never reads:</b> your prompts, code or replies. It changes nothing and sends nothing. Use <code class="inl">--anonymize</code> to hide project names before you share the file.</p>
+    <p class="note" data-i="codex" data-html><b>Codex:</b> OpenAI also routes some high risk cyber requests to a less capable model. But Codex logs only the model you picked for each turn, not the one that answered, so the receipt can list your Codex models but cannot catch a reroute.</p>
+  </section>
+
+  <footer>
+    <span data-i="foot1" data-html>Demo data: Morgan Linton's <a href="https://github.com/morganlinton/vulcanbench-opus55-traces" target="_blank" rel="noopener noreferrer">VulcanBench Frontier v4 traces</a>, Claude Opus 5.5 on 23 legacy code tasks at five effort levels through Claude Code 2.1.280, with refusal fallback on. Costs are Claude Code's list price estimates, not a bill.</span>
+    <span data-i="foot2" data-html>Made by <a href="https://x.com/Code415zg" target="_blank" rel="noopener noreferrer">@Code415zg</a> for <a href="https://code415.dev">Code415 Radar</a>. MIT licensed on <a href="https://github.com/guoziyu415/model-receipt" target="_blank" rel="noopener noreferrer">GitHub</a>.</span>
+  </footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const QS = new URLSearchParams(location.search);
+const REC = QS.get("rec") === "1";
+if (REC) document.documentElement.classList.add("rec");
+if (typeof THREE === "undefined") { $("hudRun").textContent = "The 3D library did not load. The numbers below still work."; }
+
+const VB_ROWS = [[0,"blendcore",1.0,1.01,1.01,0.0,4.7,43,0,0],[0,"cellarcore",0.929,3.82,3.82,0.0,24.0,177,0,0],[0,"codeccore",0.6,0.61,0.61,0.0,3.2,41,0,0],[0,"depotcore",1.0,3.8,3.8,0.0,22.6,149,0,0],[0,"freightcore",1.0,0.94,0.94,0.0,5.2,74,0,0],[0,"granarycore",1.0,2.65,2.65,0.0,15.8,111,0,0],[0,"hedgecore",1.0,2.17,2.17,0.0,30.1,111,0,0],[0,"lodgecore",1.0,2.97,2.97,0.0,14.3,109,0,0],[0,"matchcore-order-book-parity",1.0,1.11,1.11,0.0,9.7,85,0,0],[0,"metercore",1.0,0.51,0.51,0.0,4.9,25,0,0],[0,"pacecore",1.0,0.74,0.74,0.0,3.8,31,0,0],[0,"paddockcore",1.0,9.01,9.01,0.0,82.9,344,0,0],[0,"payrollcore",1.0,0.78,0.78,0.0,5.3,32,0,0],[0,"qlite-store-parity",1.0,0.45,0.45,0.0,4.0,37,0,0],[0,"queuecore",0.75,0.99,0.99,0.0,11.8,61,0,0],[0,"quotacore",0.8,0.46,0.46,0.0,5.3,37,0,0],[0,"reflowcore",1.0,1.62,1.62,0.0,15.1,114,0,0],[0,"schedcore",1.0,0.73,0.73,0.0,12.2,57,0,0],[0,"settlecore",0.7,0.95,0.96,0.0,11.4,76,0,0],[0,"snapcore",1.0,0.7,0.7,0.0,6.5,45,0,0],[0,"stampcore",1.0,0.64,0.64,0.0,4.4,32,0,0],[0,"tallycore",1.0,1.43,1.43,0.0,8.5,84,0,0],[0,"vaultcore",0.889,0.88,0.88,0.0,9.1,74,0,0],[1,"blendcore",1.0,1.07,1.07,0.0,6.8,40,0,0],[1,"cellarcore",1.0,2.78,2.78,0.0,14.8,105,0,0],[1,"codeccore",1.0,5.0,0.85,4.15,20.1,82,58,1],[1,"depotcore",1.0,3.0,3.0,0.0,13.1,115,0,0],[1,"freightcore",1.0,0.68,0.68,0.0,3.4,34,0,0],[1,"granarycore",1.0,7.18,7.18,0.0,62.6,292,0,0],[1,"hedgecore",1.0,0.93,0.93,0.0,6.9,33,0,0],[1,"lodgecore",1.0,12.04,12.04,0.0,108.5,514,0,0],[1,"matchcore-order-book-parity",1.0,1.02,1.02,0.0,7.0,42,0,0],[1,"metercore",1.0,0.66,0.66,0.0,3.4,34,0,0],[1,"pacecore",1.0,0.74,0.74,0.0,3.8,31,0,0],[1,"paddockcore",1.0,13.31,13.31,0.0,67.0,421,0,0],[1,"payrollcore",1.0,0.73,0.73,0.0,4.2,29,0,0],[1,"qlite-store-parity",1.0,0.74,0.74,0.0,3.9,27,0,0],[1,"queuecore",1.0,1.66,1.66,0.0,21.0,106,0,0],[1,"quotacore",1.0,1.51,1.51,0.0,11.6,88,0,0],[1,"reflowcore",1.0,0.93,0.93,0.0,7.0,52,0,0],[1,"schedcore",1.0,1.24,1.23,0.0,8.9,53,0,0],[1,"settlecore",1.0,1.8,1.8,0.0,10.3,113,0,0],[1,"snapcore",1.0,2.45,0.74,1.56,12.3,64,39,1],[1,"stampcore",1.0,3.7,0.54,3.16,18.4,83,59,1],[1,"tallycore",1.0,1.2,1.2,0.0,6.4,42,0,1],[1,"vaultcore",1.0,1.02,1.02,0.0,7.3,45,0,1],[2,"blendcore",1.0,1.8,1.8,0.0,13.1,96,0,1],[2,"cellarcore",1.0,4.69,4.69,0.0,32.2,241,0,0],[2,"codeccore",1.0,1.2,1.19,0.0,6.8,42,0,1],[2,"depotcore",0.0,1.52,1.52,0.0,5.6,38,0,1],[2,"freightcore",1.0,0.67,0.67,0.0,3.1,28,0,0],[2,"granarycore",1.0,6.28,6.28,0.0,44.8,353,0,0],[2,"hedgecore",1.0,6.45,0.7,5.74,45.3,111,92,1],[2,"lodgecore",1.0,5.33,5.33,0.0,25.6,189,0,0],[2,"matchcore-order-book-parity",1.0,1.62,1.62,0.0,17.7,78,0,1],[2,"metercore",1.0,0.91,0.91,0.0,7.3,48,0,1],[2,"pacecore",1.0,0.92,0.92,0.0,5.5,28,0,0],[2,"paddockcore",1.0,11.97,11.97,0.0,97.3,460,0,0],[2,"payrollcore",1.0,7.41,0.58,6.79,42.6,192,154,1],[2,"qlite-store-parity",1.0,0.82,0.82,0.0,5.2,29,0,0],[2,"queuecore",1.0,4.5,0.54,3.96,25.2,94,75,1],[2,"quotacore",1.0,2.68,0.43,2.1,18.3,67,48,1],[2,"reflowcore",1.0,1.81,1.81,0.0,17.1,116,0,0],[2,"schedcore",1.0,4.2,0.53,2.89,26.3,84,58,1],[2,"settlecore",1.0,1.0,1.0,0.0,5.2,33,0,0],[2,"snapcore",1.0,3.6,0.58,2.83,21.8,78,60,1],[2,"stampcore",1.0,3.9,0.68,3.23,15.0,60,42,1],[2,"tallycore",1.0,1.13,1.13,0.0,7.5,39,0,0],[2,"vaultcore",1.0,0.8,0.8,0.0,4.3,32,0,0],[3,"blendcore",1.0,6.63,0.44,6.04,35.7,139,115,1],[3,"cellarcore",1.0,5.21,2.76,2.36,18.7,93,26,1],[3,"codeccore",1.0,1.56,1.56,0.0,8.2,50,0,0],[3,"depotcore",1.0,5.43,5.43,0.0,29.2,197,0,0],[3,"freightcore",1.0,1.45,1.45,0.0,9.7,53,0,0],[3,"granarycore",1.0,5.1,5.1,0.0,20.7,157,0,0],[3,"hedgecore",1.0,5.49,1.23,3.56,25.0,116,58,1],[3,"lodgecore",1.0,4.05,4.05,0.0,16.6,133,0,0],[3,"matchcore-order-book-parity",1.0,1.82,1.82,0.0,12.4,70,0,0],[3,"metercore",1.0,1.24,1.24,0.0,7.1,51,0,0],[3,"pacecore",1.0,2.13,2.13,0.0,12.3,89,0,0],[3,"paddockcore",1.0,3.63,3.63,0.0,15.2,92,0,0],[3,"payrollcore",1.0,3.74,0.62,2.89,17.8,71,40,1],[3,"qlite-store-parity",1.0,1.65,1.65,0.0,9.4,55,0,0],[3,"queuecore",1.0,5.1,0.91,3.49,31.2,119,77,1],[3,"quotacore",1.0,1.23,1.23,0.0,7.9,44,0,0],[3,"reflowcore",1.0,2.99,2.99,0.0,19.8,122,0,0],[3,"schedcore",1.0,1.77,1.77,0.0,11.1,59,0,0],[3,"settlecore",1.0,1.84,1.84,0.0,19.0,47,0,0],[3,"snapcore",0.5,8.17,0.3,7.82,43.0,193,167,1],[3,"stampcore",1.0,3.27,0.63,2.39,14.5,58,33,1],[3,"tallycore",1.0,19.69,0.47,19.13,86.1,263,236,1],[3,"vaultcore",1.0,1.36,1.36,0.0,6.8,48,0,0],[4,"blendcore",1.0,11.41,1.05,10.13,59.9,180,141,1],[4,"cellarcore",1.0,19.09,0.39,18.6,68.2,320,288,0],[4,"codeccore",0.6,7.05,0.33,6.57,35.7,146,121,1],[4,"depotcore",1.0,10.71,1.58,9.08,40.3,160,98,0],[4,"freightcore",1.0,5.25,5.25,0.0,22.3,223,0,1],[4,"granarycore",1.0,29.2,0.32,28.88,77.7,314,291,0],[4,"hedgecore",1.0,10.97,1.03,9.94,40.0,178,144,1],[4,"lodgecore",1.0,6.16,6.16,0.0,52.7,167,0,0],[4,"matchcore-order-book-parity",1.0,6.53,1.03,5.49,39.4,116,63,1],[4,"metercore",1.0,4.44,0.87,3.51,25.7,107,60,1],[4,"pacecore",1.0,4.49,4.49,0.0,21.0,128,0,0],[4,"paddockcore",1.0,21.78,0.36,21.24,70.9,273,245,0],[4,"payrollcore",1.0,4.06,4.06,0.0,18.3,161,0,1],[4,"qlite-store-parity",1.0,3.34,3.34,0.0,14.3,100,0,0],[4,"queuecore",1.0,3.74,3.74,0.0,24.3,125,0,1],[4,"quotacore",1.0,3.25,3.25,0.0,15.7,97,0,0],[4,"reflowcore",1.0,3.33,3.33,0.0,19.1,90,0,0],[4,"schedcore",1.0,4.57,4.57,0.0,31.5,131,0,0],[4,"settlecore",1.0,7.06,1.38,5.4,32.2,163,77,1],[4,"snapcore",1.0,4.04,4.04,0.0,17.5,112,0,0],[4,"stampcore",1.0,5.6,0.88,4.72,25.3,85,44,1],[4,"tallycore",0.75,21.81,0.86,20.83,93.2,261,213,1],[4,"vaultcore",1.0,3.34,3.34,0.0,17.6,99,0,0]];
+const SAMPLE = {"tool":"model-receipt","version":"1.0.0","sample":true,"generated_at":"2026-09-27T12:00:00+00:00","days":30,"claude":{"sessions":[{"id":"s006","project":"web-dashboard","started":"2026-09-02T20:00:00Z","minutes":53.1,"effort":"xhigh","replies":[["claude-opus-5-5",188]],"switches":[],"output_tokens":{"claude-opus-5-5":109416},"subagent_replies":{}},{"id":"s002","project":"web-dashboard","started":"2026-09-03T05:00:00Z","minutes":58.5,"effort":"high","replies":[["claude-opus-5-5",135]],"switches":[],"output_tokens":{"claude-opus-5-5":46305},"subagent_replies":{"claude-opus-5-5":10}},{"id":"s003","project":"web-dashboard","started":"2026-09-04T04:00:00Z","minutes":27.3,"effort":"high","replies":[["claude-opus-5-5",59]],"switches":[],"output_tokens":{"claude-opus-5-5":41064},"subagent_replies":{}},{"id":"s013","project":"cli-tools","started":"2026-09-04T09:00:00Z","minutes":13.8,"effort":"xhigh","replies":[["claude-opus-5-5",65]],"switches":[],"output_tokens":{"claude-opus-5-5":51870},"subagent_replies":{}},{"id":"s016","project":"cli-tools","started":"2026-09-04T11:00:00Z","minutes":55.9,"effort":"high","replies":[["claude-opus-5-5",135]],"switches":[],"output_tokens":{"claude-opus-5-5":83160},"subagent_replies":{}},{"id":"s032","project":"side-project","started":"2026-09-04T14:00:00Z","minutes":65.2,"effort":"high","replies":[["claude-opus-5-5",131]],"switches":[],"output_tokens":{"claude-opus-5-5":101132},"subagent_replies":{"claude-opus-5-5":20}},{"id":"s014","project":"cli-tools","started":"2026-09-05T19:00:00Z","minutes":13.1,"effort":"xhigh","replies":[["claude-opus-5-5",33]],"switches":[],"output_tokens":{"claude-opus-5-5":8316},"subagent_replies":{}},{"id":"s021","project":"cli-tools","started":"2026-09-06T22:00:00Z","minutes":8.6,"effort":"high","replies":[["claude-opus-5-5",34]],"switches":[],"output_tokens":{"claude-opus-5-5":21828},"subagent_replies":{"claude-opus-5-5":40}},{"id":"s011","project":"web-dashboard","started":"2026-09-09T23:00:00Z","minutes":22.9,"effort":"medium","replies":[["claude-opus-5-5",50]],"switches":[],"output_tokens":{"claude-opus-5-5":18650},"subagent_replies":{}},{"id":"s024","project":"firmware-reverse","started":"2026-09-10T04:00:00Z","minutes":50.8,"effort":"max","replies":[["claude-opus-5-5",123]],"switches":[],"output_tokens":{"claude-opus-5-5":98154},"subagent_replies":{}},{"id":"s019","project":"cli-tools","started":"2026-09-11T14:00:00Z","minutes":14.7,"effort":"high","replies":[["claude-opus-5-5",32]],"switches":[],"output_tokens":{"claude-opus-5-5":19040},"subagent_replies":{}},{"id":"s027","project":"firmware-reverse","started":"2026-09-11T14:00:00Z","minutes":14.4,"effort":"xhigh","replies":[["claude-opus-5-5",6],["claude-opus-4-8",50]],"switches":[{"at":6,"from":"claude-opus-5-5","to":"claude-opus-4-8","by":"auto"}],"output_tokens":{"claude-opus-5-5":4404,"claude-opus-4-8":21700},"subagent_replies":{}},{"id":"s028","project":"firmware-reverse","started":"2026-09-13T01:00:00Z","minutes":10.1,"effort":"xhigh","replies":[["claude-opus-5-5",8],["claude-opus-4-8",25]],"switches":[{"at":8,"from":"claude-opus-5-5","to":"claude-opus-4-8","by":"auto"}],"output_tokens":{"claude-opus-5-5":5360,"claude-opus-4-8":18975},"subagent_replies":{}},{"id":"s015","project":"cli-tools","started":"2026-09-13T19:00:00Z","minutes":62.8,"effort":"medium","replies":[["claude-opus-5-5",76],["claude-sonnet-4-6",51]],"switches":[{"at":76,"from":"claude-opus-5-5","to":"claude-sonnet-4-6","by":"you"}],"output_tokens":{"claude-opus-5-5":48032,"claude-sonnet-4-6":40800},"subagent_replies":{}},{"id":"s026","project":"firmware-reverse","started":"2026-09-14T17:00:00Z","minutes":14.7,"effort":"high","replies":[["claude-opus-5-5",17],["claude-opus-4-8",33]],"switches":[{"at":17,"from":"claude-opus-5-5","to":"claude-opus-4-8","by":"auto"}],"output_tokens":{"claude-opus-5-5":11798,"claude-opus-4-8":18546},"subagent_replies":{}},{"id":"s020","project":"cli-tools","started":"2026-09-15T18:00:00Z","minutes":20.7,"effort":"xhigh","replies":[["claude-opus-5-5",56]],"switches":[],"output_tokens":{"claude-opus-5-5":30520},"subagent_replies":{}},{"id":"s001","project":"web-dashboard","started":"2026-09-15T20:00:00Z","minutes":38.1,"effort":"high","replies":[["claude-opus-5-5",81]],"switches":[],"output_tokens":{"claude-opus-5-5":66663},"subagent_replies":{"claude-opus-5-5":35}},{"id":"s031","project":"side-project","started":"2026-09-16T03:00:00Z","minutes":54.3,"effort":"xhigh","replies":[["claude-opus-5-5",209]],"switches":[],"output_tokens":{"claude-opus-5-5":146509},"subagent_replies":{"claude-opus-5-5":36}},{"id":"s022","project":"firmware-reverse","started":"2026-09-16T06:00:00Z","minutes":13.2,"effort":"xhigh","replies":[["claude-opus-5-5",3],["claude-opus-4-8",25]],"switches":[{"at":3,"from":"claude-opus-5-5","to":"claude-opus-4-8","by":"auto"}],"output_tokens":{"claude-opus-5-5":1857,"claude-opus-4-8":17525},"subagent_replies":{"claude-opus-5-5":21}},{"id":"s017","project":"cli-tools","started":"2026-09-16T17:00:00Z","minutes":29.1,"effort":"medium","replies":[["claude-opus-5-5",100]],"switches":[],"output_tokens":{"claude-opus-5-5":53200},"subagent_replies":{"claude-opus-5-5":12}},{"id":"s012","project":"web-dashboard","started":"2026-09-18T02:00:00Z","minutes":7.7,"effort":"max","replies":[["claude-opus-5-5",19]],"switches":[],"output_tokens":{"claude-opus-5-5":10317},"subagent_replies":{}},{"id":"s004","project":"web-dashboard","started":"2026-09-18T06:00:00Z","minutes":32.5,"effort":"xhigh","replies":[["claude-opus-5-5",100]],"switches":[],"output_tokens":{"claude-opus-5-5":61000},"subagent_replies":{}},{"id":"s010","project":"web-dashboard","started":"2026-09-20T10:00:00Z","minutes":41.1,"effort":"high","replies":[["claude-opus-5-5",153]],"switches":[],"output_tokens":{"claude-opus-5-5":48042},"subagent_replies":{"claude-opus-5-5":3}},{"id":"s005","project":"web-dashboard","started":"2026-09-21T02:00:00Z","minutes":55.2,"effort":"high","replies":[["claude-opus-5-5",137]],"switches":[],"output_tokens":{"claude-opus-5-5":111929},"subagent_replies":{}},{"id":"s018","project":"cli-tools","started":"2026-09-21T14:00:00Z","minutes":46.6,"effort":"high","replies":[["claude-opus-5-5",107]],"switches":[],"output_tokens":{"claude-opus-5-5":75007},"subagent_replies":{"claude-opus-5-5":22}},{"id":"s029","project":"firmware-reverse","started":"2026-09-22T04:00:00Z","minutes":36.7,"effort":"medium","replies":[["claude-opus-5-5",94]],"switches":[],"output_tokens":{"claude-opus-5-5":31208},"subagent_replies":{}},{"id":"s030","project":"side-project","started":"2026-09-22T05:00:00Z","minutes":66.1,"effort":"xhigh","replies":[["claude-opus-5-5",145]],"switches":[],"output_tokens":{"claude-opus-5-5":90480},"subagent_replies":{}},{"id":"s007","project":"web-dashboard","started":"2026-09-22T14:00:00Z","minutes":87.5,"effort":"high","replies":[["claude-opus-5-5",199]],"switches":[],"output_tokens":{"claude-opus-5-5":105669},"subagent_replies":{}},{"id":"s025","project":"firmware-reverse","started":"2026-09-22T21:00:00Z","minutes":42.2,"effort":"medium","replies":[["claude-opus-5-5",121]],"switches":[],"output_tokens":{"claude-opus-5-5":31823},"subagent_replies":{"claude-opus-5-5":16}},{"id":"s023","project":"firmware-reverse","started":"2026-09-24T13:00:00Z","minutes":33.0,"effort":"medium","replies":[["claude-opus-5-5",20],["claude-opus-4-8",76]],"switches":[{"at":20,"from":"claude-opus-5-5","to":"claude-opus-4-8","by":"auto"}],"output_tokens":{"claude-opus-5-5":16700,"claude-opus-4-8":52896},"subagent_replies":{}},{"id":"s008","project":"web-dashboard","started":"2026-09-26T02:00:00Z","minutes":15.4,"effort":"high","replies":[["claude-opus-5-5",40]],"switches":[],"output_tokens":{"claude-opus-5-5":10880},"subagent_replies":{}},{"id":"s034","project":"side-project","started":"2026-09-26T06:00:00Z","minutes":67.8,"effort":"max","replies":[["claude-opus-5-5",147]],"switches":[],"output_tokens":{"claude-opus-5-5":120099},"subagent_replies":{}},{"id":"s033","project":"side-project","started":"2026-09-26T18:00:00Z","minutes":47.6,"effort":"xhigh","replies":[["claude-opus-5-5",155]],"switches":[],"output_tokens":{"claude-opus-5-5":66960},"subagent_replies":{}},{"id":"s009","project":"web-dashboard","started":"2026-09-26T21:00:00Z","minutes":34.0,"effort":"high","replies":[["claude-opus-5-5",72]],"switches":[],"output_tokens":{"claude-opus-5-5":46800},"subagent_replies":{"claude-opus-5-5":39}}]},"codex":{"sessions":6,"turns_by_picked_model":{"gpt-5.6-sol":212,"gpt-6-astra":48}}};
+const LEVELS = [
+  {passed:17, cost:1.70, min:13.7, share:0.000, spend:0.000, handed:0},
+  {passed:23, cost:2.84, min:18.6, share:0.064, spend:0.136, handed:3},
+  {passed:22, cost:3.27, min:21.4, share:0.209, spend:0.366, handed:7},
+  {passed:22, cost:4.11, min:20.7, share:0.324, spend:0.504, handed:8},
+  {passed:21, cost:8.75, min:37.5, share:0.478, spend:0.718, handed:12}
+];
+const M55 = "claude-opus-5-5", M48 = "claude-opus-4-8";
+
+const T = {
+  en: {
+    eyebrow:"Open source · Claude Code and Codex", h1:"Model Receipt",
+    lede:"When a safety classifier flags a request, Claude Code can hand the rest of the session to an older model. Watch it happen in <b>115 real sessions</b> from VulcanBench, then print a receipt for your own.",
+    ctaMine:"Print my receipt", ctaGh:"Code on GitHub",
+    castOwlT:"The owl watches", castOwl:"the safety classifier, which only steps in to refuse a request", castFoxT:"The fox answers", castTortT:"The tortoise takes over",
+    castFoxDemo:"{f}, the model you picked", castTortDemo:"{t}, for the rest of the session",
+    castFoxMine:"{f}, your main model", castTortMine:"{t}, when the model changes",
+    tagOwl:"Safety classifier", hint:"drag to turn", drop:"Drop model-receipt.json here",
+    next:"Next session", load:"Load my receipt", backDemo:"Back to VulcanBench", play:"Pause", resume:"Play",
+    levels:["Low","Medium","High","Extra high","Max"], effort:"Effort level", project:"Project", all:"All sessions",
+    hudDemo:"{lvl} effort · session {i} of {n} · {task}", hudMine:"{grp} · session {i} of {n}",
+    perBox:"1 box = {k} replies", perBox1:"1 box = 1 reply",
+    kFoxDemo:"Answered by {f}", kTortDemo:"Finished by {t}", kResDemo:"Tasks passed",
+    sFoxDemo:"of replies · <b>{p}</b> of the spend", sTortDemo:"of replies · <b>{s}</b> of {n} sessions · <b>{p}</b> of the spend",
+    sResDemo:"<b>${c}</b> per task · <b>{m}</b> min on average",
+    kFoxMine:"Answered by {f}", kTortMine:"Answered by other models", kResMine:"Sessions",
+    sFoxMine:"<b>{n}</b> replies", sTortMine:"<b>{n}</b> replies · <b>{s}</b> sessions changed model with no /model from you",
+    sResMine:"<b>{r}</b> replies in total · mostly <b>{e}</b> effort",
+    stripTitleDemo:"115 real sessions", stripSubDemo:"Each line is one Claude Code session, left to right. Click a line to replay it above.",
+    stripTitleMine:"Your sessions", stripSubMine:"Each line is one of your sessions, left to right, newest {n} per project. Click a line to replay it above.",
+    legMain:"{f} answering", legAuto:"{t} after a handoff", legYou:"after your /model", legFail:"task failed",
+    colFoot:"<b>{p}/23</b> passed · <b>${c}</b>", colFootMine:"<b>{s}</b> sessions · <b>{h}</b> changed",
+    srcDemo:"VulcanBench data. Load your model-receipt.json to replay your own sessions.",
+    srcMine:"{file}: {n} Claude Code sessions, main model {f}.",
+    rTitle:"MODEL RECEIPT", rTask:"Task", rTime:"Time", rTotal:"TOTAL", rOther:"Other",
+    rHanded:"Handed off at reply", rPassed:"PASSED", rFailed:"FAILED · {p}% of checks", rNotJudged:"NOT JUDGED",
+    rThanks:"THANK YOU FOR COMPUTING", rSession:"{lvl} effort · session {i}/{n}", rEffort:"Effort",
+    rChanged:"Model changed at reply", rByYou:"after your /model", rByAuto:"no /model from you",
+    rSub:"Subagent replies", rTok:"Output tokens", rMin:"{m} min", rReplies:"replies",
+    tipReplies:"{n} replies", tipHand:"handed to {t} at reply {a}", tipCost:"${c} · {m} min",
+    tipPass:"passed", tipFail:"failed, {p}% of checks", tipNone:"stayed on {f}",
+    errJson:"That file is not valid JSON. Load the model-receipt.json the script wrote.",
+    errShape:"This does not look like a model-receipt.json file.", errEmpty:"The file has no Claude Code sessions to show.",
+    noWebGL:"3D needs WebGL, which this browser has turned off. The numbers below still work.",
+    trySample:"Try a sample receipt", srcSample:"Sample receipt, made up to show what yours will look like. Load your own model-receipt.json to see real numbers.",
+    copy:"Copy", copied:"Copied",
+    findTitle:"What the 115 sessions show",
+    f1:"Max effort cost 3 times as much per task as medium, took twice as long, and passed fewer tasks: 21 of 23 against 23 of 23.",
+    f2:"of the money spent at max effort went to Opus 4.8. In 12 of 23 max sessions the classifier stepped in, mostly in the first fifth of the session, and Opus 4.8 did the rest.",
+    f3:"failed tasks at high, extra high and max had a safety classifier step in. The 6 failures at low effort were Opus 5.5 on its own.",
+    caveat:"<b>Read this before you share it.</b> All 30 handoffs were in the cyber category. These tasks rebuild old binaries, which looks a lot like reverse engineering, so ordinary coding may never trigger it. Each task ran once per level, so a gap of 2 tasks is within noise. The receipt below tells you what happens in your own sessions.",
+    useTitle:"Print your own receipt", useSub:"One Python file, no installs. It reads the logs Claude Code and Codex already keep on your computer.",
+    s1t:"Get the script", s1:"Download it from GitHub, or clone the repo.",
+    s2t:"Print the receipt", s2:"It prints a receipt in your terminal and saves model-receipt.json next to it.",
+    s3t:"Watch it in 3D", s3:"Run view to open this page with your data, or drop model-receipt.json on the scene above. The file is read in your browser and never uploaded.",
+    priv:"<b>What it reads:</b> model names, reply counts, effort level, output token counts, timestamps and project folder names. <b>What it never reads:</b> your prompts, code or replies. It changes nothing and sends nothing. Use <code class=\"inl\">--anonymize</code> to hide project names before you share the file.",
+    codex:"<b>Codex:</b> OpenAI also routes some high risk cyber requests to a less capable model. But Codex logs only the model you picked for each turn, not the one that answered, so the receipt can list your Codex models but cannot catch a reroute.",
+    foot1:"Demo data: Morgan Linton's <a href=\"https://github.com/morganlinton/vulcanbench-opus55-traces\" target=\"_blank\" rel=\"noopener noreferrer\">VulcanBench Frontier v4 traces</a>, Claude Opus 5.5 on 23 legacy code tasks at five effort levels through Claude Code 2.1.280, with refusal fallback on. Costs are Claude Code's list price estimates, not a bill.",
+    foot2:"Made by <a href=\"https://x.com/Code415zg\" target=\"_blank\" rel=\"noopener noreferrer\">@Code415zg</a> for <a href=\"https://code415.dev\">Code415 Radar</a>. MIT licensed on <a href=\"https://github.com/guoziyu415/model-receipt\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a>.",
+  },
+  zh: {
+    eyebrow:"开源 · Claude Code 和 Codex", h1:"模型小票",
+    lede:"安全分类器一旦拦下某个请求，Claude Code 可能会把这个会话剩下的部分交给更旧的模型来做。先在 VulcanBench 的 <b>115 个真实会话</b>里看它怎么发生，再给你自己的会话打一张小票。",
+    ctaMine:"打印我的小票", ctaGh:"GitHub 上的代码",
+    castOwlT:"猫头鹰盯着", castOwl:"安全分类器，只在拒绝请求时出手", castFoxT:"狐狸回答", castTortT:"乌龟接手",
+    castFoxDemo:"{f}，你选的模型", castTortDemo:"{t}，接手会话剩下的部分",
+    castFoxMine:"{f}，你的主模型", castTortMine:"{t}，模型被换掉时",
+    tagOwl:"安全分类器", hint:"拖动可以转视角", drop:"把 model-receipt.json 拖到这里",
+    next:"下一个会话", load:"加载我的小票", backDemo:"回到 VulcanBench", play:"暂停", resume:"播放",
+    levels:["低","中","高","超高","最高"], effort:"思考强度", project:"项目", all:"全部会话",
+    hudDemo:"{lvl}强度 · 第 {i}/{n} 个会话 · {task}", hudMine:"{grp} · 第 {i}/{n} 个会话",
+    perBox:"1 箱 = {k} 条回复", perBox1:"1 箱 = 1 条回复",
+    kFoxDemo:"{f} 回答", kTortDemo:"{t} 接手", kResDemo:"通过的任务",
+    sFoxDemo:"的回复 · 花费占 <b>{p}</b>", sTortDemo:"的回复 · {n} 个会话里有 <b>{s}</b> 个 · 花费占 <b>{p}</b>",
+    sResDemo:"每个任务 <b>${c}</b> · 平均 <b>{m}</b> 分钟",
+    kFoxMine:"{f} 回答", kTortMine:"其他模型回答", kResMine:"会话",
+    sFoxMine:"<b>{n}</b> 条回复", sTortMine:"<b>{n}</b> 条回复 · <b>{s}</b> 个会话在你没用 /model 时换了模型",
+    sResMine:"共 <b>{r}</b> 条回复 · 大多是 <b>{e}</b> 强度",
+    stripTitleDemo:"115 个真实会话", stripSubDemo:"每一行是一个 Claude Code 会话，从左到右。点一行就在上面重放它。",
+    stripTitleMine:"你的会话", stripSubMine:"每一行是你的一个会话，从左到右，每个项目最多显示最近 {n} 个。点一行就在上面重放它。",
+    legMain:"{f} 在回答", legAuto:"交接后由 {t} 回答", legYou:"你用 /model 换了之后", legFail:"任务失败",
+    colFoot:"通过 <b>{p}/23</b> · <b>${c}</b>", colFootMine:"<b>{s}</b> 个会话 · <b>{h}</b> 个换过模型",
+    srcDemo:"VulcanBench 数据。加载你的 model-receipt.json，就能重放你自己的会话。",
+    srcMine:"{file}：{n} 个 Claude Code 会话，主模型 {f}。",
+    rTitle:"模型小票", rTask:"任务", rTime:"用时", rTotal:"合计", rOther:"其他",
+    rHanded:"交接发生在第几条回复", rPassed:"通过", rFailed:"失败 · 通过 {p}% 的检查", rNotJudged:"未评分",
+    rThanks:"谢谢惠顾", rSession:"{lvl}强度 · 第 {i}/{n} 个会话", rEffort:"强度",
+    rChanged:"换模型发生在第几条回复", rByYou:"你用了 /model", rByAuto:"你没用 /model",
+    rSub:"子代理回复", rTok:"输出 token", rMin:"{m} 分钟", rReplies:"条回复",
+    tipReplies:"{n} 条回复", tipHand:"第 {a} 条回复起交给 {t}", tipCost:"${c} · {m} 分钟",
+    tipPass:"通过", tipFail:"失败，通过 {p}% 的检查", tipNone:"一直是 {f}",
+    errJson:"这个文件不是有效的 JSON。请加载脚本生成的 model-receipt.json。",
+    errShape:"这个文件看起来不是 model-receipt.json。", errEmpty:"这个文件里没有可以显示的 Claude Code 会话。",
+    noWebGL:"3D 需要 WebGL，这个浏览器把它关掉了。下面的数字照常可以看。",
+    trySample:"看一张示例小票", srcSample:"这是编出来的示例小票，只是让你看看自己的会是什么样。加载你自己的 model-receipt.json 才是真实数字。",
+    copy:"复制", copied:"已复制",
+    findTitle:"这 115 个会话说明了什么",
+    f1:"最高强度下每个任务的花费是中等强度的 3 倍，用时是 2 倍，通过的任务反而更少：23 个里过了 21 个，中等强度是 23 个全过。",
+    f2:"的最高强度花费付给了 Opus 4.8。最高强度的 23 个会话里有 12 个被分类器拦下，大多在会话的前五分之一，之后全由 Opus 4.8 完成。",
+    f3:"高、超高、最高三档里失败的 4 个任务，每一个都有安全分类器介入。低强度的 6 个失败则都是 Opus 5.5 自己没做对。",
+    caveat:"<b>分享之前请先看这一段。</b>30 次交接全部属于网络安全类别。这些任务是重建旧的二进制程序，看起来很像逆向工程，所以日常写代码可能根本不会触发。每个任务在每档只跑了一次，差 2 个任务还在误差范围里。你自己的会话会怎样，看下面的小票。",
+    useTitle:"打印你自己的小票", useSub:"只有一个 Python 文件，不用安装任何东西。它读的是 Claude Code 和 Codex 本来就存在你电脑上的记录。",
+    s1t:"下载脚本", s1:"从 GitHub 下载，或者直接克隆仓库。",
+    s2t:"打印小票", s2:"它会在终端里打印一张小票，并在旁边保存 model-receipt.json。",
+    s3t:"用 3D 看", s3:"运行 view 会直接打开带着你数据的这个页面，也可以把 model-receipt.json 拖到上面的场景里。文件只在你的浏览器里读取，不会上传。",
+    priv:"<b>它会读：</b>模型名、回复数量、思考强度、输出 token 数、时间和项目文件夹名。<b>它不会读：</b>你的提示词、代码和回复内容。它不改任何设置，也不发送任何东西。分享文件前可以加 <code class=\"inl\">--anonymize</code> 隐藏项目名。",
+    codex:"<b>Codex：</b>OpenAI 也会把一部分高风险的网络安全请求转给能力更弱的模型。但 Codex 的记录里只写了你每一轮选的模型，没写实际是谁回答的，所以小票能列出你用过的 Codex 模型，却查不出被转走的情况。",
+    foot1:"演示数据来自 Morgan Linton 公开的 <a href=\"https://github.com/morganlinton/vulcanbench-opus55-traces\" target=\"_blank\" rel=\"noopener noreferrer\">VulcanBench Frontier v4 会话记录</a>：Claude Opus 5.5 通过 Claude Code 2.1.280 在五个思考强度下各做 23 个旧代码任务，开启了拒绝后回退。花费是 Claude Code 按标价估算的，不是实际账单。",
+    foot2:"由 <a href=\"https://x.com/Code415zg\" target=\"_blank\" rel=\"noopener noreferrer\">@Code415zg</a> 为 <a href=\"https://code415.dev\">Code415 Radar</a> 制作。代码以 MIT 许可开源在 <a href=\"https://github.com/guoziyu415/model-receipt\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a>。",
+  }
+};
+let lang = "en";
+try { const q = QS.get("lang"); if (T[q]) lang = q; else if (/^zh/i.test(navigator.language || "")) lang = "zh"; } catch (e) {}
+const t = (k, v) => { let s = (T[lang][k] !== undefined ? T[lang][k] : T.en[k]); if (typeof s === "string" && v) s = s.replace(/\{(\w+)\}/g, (m, x) => v[x] !== undefined ? v[x] : m); return s; };
+const fmt = n => Number(n).toLocaleString("en-US");
+const fmtDate = iso => { const d = new Date(iso); if (isNaN(d)) return String(iso || "").slice(0, 10); const p = x => String(x).padStart(2, "0"); return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes()); };
+const pctS = x => (x * 100).toFixed(x > 0 && x < 0.1 ? 1 : 0) + "%";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+function pretty(m) {
+  if (!m) return "?";
+  const s = String(m);
+  if (s.indexOf("claude-") === 0) {
+    const p = s.slice(7).replace(/-\d{8}$/, "").split("-");
+    const fam = p[0].charAt(0).toUpperCase() + p[0].slice(1);
+    const ver = p.slice(1).filter(x => /^\d{1,2}$/.test(x)).join(".");
+    return ver ? fam + " " + ver : fam;
+  }
+  return s;
+}
+
+function demoSessions() {
+  return VB_ROWS.map((r, i) => {
+    const [e, task, f, c, c55, c48, min, n, n48, stops] = r;
+    const segs = [];
+    if (n - n48 > 0) segs.push({m: M55, n: n - n48, k: "main"});
+    if (n48 > 0) segs.push({m: M48, n: n48, k: "auto"});
+    const other = Math.max(0, +(c - c55 - c48).toFixed(2));
+    return {id: "vb" + i, group: e, title: task, segs, n, ok: f === 1, f, cost: c, costBy: [[M55, c55], [M48, c48]], other, min, handAt: n48 > 0 ? n - n48 + 1 : 0, stops};
+  });
+}
+
+let isSample = false, MODE = "demo", SESS = [], GROUPS = [], gi = 4, foxModel = M55, tortModel = M48, fileName = "";
+
+function useDemo() {
+  MODE = "demo"; SESS = demoSessions(); foxModel = M55; tortModel = M48;
+  GROUPS = [0, 1, 2, 3, 4].map(e => ({key: e, sessions: SESS.filter(s => s.group === e)}));
+  gi = 4; $("demo").hidden = true; $("err").hidden = true;
+  refreshAll(true);
+}
+
+function parseReceipt(obj) {
+  if (!obj || typeof obj !== "object" || !("claude" in obj)) throw new Error(t("errShape"));
+  const raw = (obj.claude && Array.isArray(obj.claude.sessions)) ? obj.claude.sessions : [];
+  const firstModels = {};
+  raw.forEach(s => { if (s && Array.isArray(s.replies) && s.replies[0]) firstModels[s.replies[0][0]] = (firstModels[s.replies[0][0]] || 0) + 1; });
+  const main = Object.entries(firstModels).sort((a, b) => b[1] - a[1])[0];
+  if (!main) throw new Error(t("errEmpty"));
+  const sessions = [];
+  const others = {};
+  raw.forEach((s, i) => {
+    if (!s || !Array.isArray(s.replies) || !s.replies.length) return;
+    const own = s.replies[0][0];
+    const sw = Array.isArray(s.switches) ? s.switches : [];
+    const segs = s.replies.map((r, j) => {
+      let k = "main";
+      if (j > 0) { const w = sw[j - 1] || {}; k = r[0] === own ? "main" : (w.by === "you" ? "you" : "auto"); }
+      if (k !== "main") others[r[0]] = (others[r[0]] || 0) + (+r[1] || 0);
+      return {m: String(r[0]), n: +r[1] || 0, k};
+    }).filter(x => x.n > 0);
+    const n = segs.reduce((a, b) => a + b.n, 0);
+    if (!n) return;
+    const firstOther = segs.findIndex(x => x.k !== "main");
+    const handAt = firstOther > 0 ? segs.slice(0, firstOther).reduce((a, b) => a + b.n, 0) + 1 : 0;
+    sessions.push({id: "u" + i, group: String(s.project || "unknown"), title: String(s.project || "unknown"), started: s.started || "", segs, n,
+      ok: null, min: s.minutes, effort: s.effort || "", handAt, handBy: firstOther > 0 ? segs[firstOther].k : "", sub: s.subagent_replies || {}, tok: s.output_tokens || {}});
+  });
+  if (!sessions.length) throw new Error(t("errEmpty"));
+  sessions.sort((a, b) => String(b.started).localeCompare(String(a.started)));
+  const other = Object.entries(others).sort((a, b) => b[1] - a[1])[0];
+  return {sessions, main: main[0], other: other ? other[0] : null};
+}
+
+function useMine(obj, name) {
+  try {
+    const res = parseReceipt(obj);
+    isSample = !!obj.sample; MODE = "mine"; SESS = res.sessions; foxModel = res.main; tortModel = res.other; fileName = name || "model-receipt.json";
+    const counts = {};
+    SESS.forEach(s => counts[s.group] = (counts[s.group] || 0) + 1);
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]);
+    GROUPS = [{key: "__all", sessions: SESS}].concat(top.map(p => ({key: p, sessions: SESS.filter(s => s.group === p)})));
+    gi = 0; $("demo").hidden = false; $("err").hidden = true;
+    refreshAll(true);
+  } catch (e) { $("err").textContent = e.message; $("err").hidden = false; }
+}
+function loadText(text, name) {
+  let obj; try { obj = JSON.parse(text); } catch (e) { $("err").textContent = t("errJson"); $("err").hidden = false; return; }
+  useMine(obj, name);
+}
+
+function foxName() { return pretty(foxModel); }
+function tortName() { return tortModel ? pretty(tortModel) : (lang === "zh" ? "其他模型" : "Other models"); }
+function groupName(g) { return MODE === "demo" ? t("levels")[g.key] : (g.key === "__all" ? t("all") : g.key); }
+
+function playQueue(g) {
+  const sw = g.sessions.filter(s => s.segs.some(x => x.k !== "main"));
+  const st = g.sessions.filter(s => !s.segs.some(x => x.k !== "main"));
+  const q = [];
+  for (let i = 0; i < Math.max(sw.length, st.length); i++) { if (sw[i]) q.push(sw[i]); if (st[i]) q.push(st[i]); }
+  return MODE === "mine" ? q.slice(0, 40) : q;
+}
+
+function stripOrder(list) {
+  const fr = s => { const m = s.segs.filter(x => x.k === "main").reduce((a, b) => a + b.n, 0); return m / s.n; };
+  return list.slice().sort((a, b) => (fr(b) - fr(a)) || String(a.title).localeCompare(String(b.title)));
+}
+
+const XSVG = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="var(--flag)" stroke-width="2.4" stroke-linecap="round"/></svg>';
+
+function renderStrips() {
+  const box = $("strips"); box.textContent = "";
+  const cols = MODE === "demo" ? GROUPS : (GROUPS.length > 1 ? GROUPS.slice(1) : GROUPS);
+  box.style.gridTemplateColumns = "repeat(" + Math.max(1, cols.length) + ",minmax(0,1fr))";
+  const cap = MODE === "demo" ? 23 : 23;
+  cols.forEach((g, ci) => {
+    const col = document.createElement("div"); col.className = "scol";
+    const h = document.createElement("h3");
+    h.innerHTML = esc(groupName(g)) + (MODE === "demo" ? "<small>" + esc(pctS(LEVELS[g.key].share)) + "</small>" : "<small>" + g.sessions.length + "</small>");
+    col.appendChild(h);
+    const shown = MODE === "demo" ? g.sessions : g.sessions.slice(0, cap);
+    stripOrder(shown).forEach(s => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "strip"; b.dataset.id = s.id;
+      const bar = document.createElement("span"); bar.className = "bar2";
+      s.segs.forEach(x => { const i = document.createElement("i"); i.className = x.k; i.style.flex = String(x.n); bar.appendChild(i); });
+      const mark = document.createElement("span"); mark.innerHTML = s.ok === false ? XSVG : "";
+      b.append(bar, mark);
+      b.setAttribute("aria-label", tipText(s, true));
+      b.addEventListener("mouseenter", ev => showTip(s, ev)); b.addEventListener("mousemove", ev => moveTip(ev));
+      b.addEventListener("mouseleave", hideTip); b.addEventListener("focus", ev => showTip(s, ev, b)); b.addEventListener("blur", hideTip);
+      b.addEventListener("click", () => { selectGroupOf(s); if (player) player.playSession(s); else printReceipt(s, true); markStrip(s.id); });
+      col.appendChild(b);
+    });
+    const foot = document.createElement("div"); foot.className = "foot";
+    if (MODE === "demo") { const L = LEVELS[g.key]; foot.innerHTML = t("colFoot", {p: L.passed, c: L.cost.toFixed(2)}); }
+    else { foot.innerHTML = t("colFootMine", {s: g.sessions.length, h: g.sessions.filter(s => s.handBy === "auto").length}); }
+    col.appendChild(foot);
+    box.appendChild(col);
+  });
+  const lg = $("legend"); lg.textContent = "";
+  const add = (cls, style, txt) => { const s = document.createElement("span"); if (cls) s.className = cls; if (style) s.setAttribute("style", style); s.textContent = txt; lg.appendChild(s); };
+  add("", "--c:var(--fox)", t("legMain", {f: foxName()}));
+  add("", "--c:var(--tort)", t("legAuto", {t: tortName()}));
+  if (MODE === "mine") add("you", "", t("legYou"));
+  if (MODE === "demo") add("x", "", t("legFail"));
+  $("stripTitle").textContent = MODE === "demo" ? t("stripTitleDemo") : t("stripTitleMine");
+  $("stripSub").textContent = MODE === "demo" ? t("stripSubDemo") : t("stripSubMine", {n: cap});
+}
+function markStrip(id) { document.querySelectorAll(".strip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.id === id))); }
+
+function tipText(s, plain) {
+  const parts = [];
+  const title = MODE === "demo" ? s.title + " · " + t("levels")[s.group] : s.title + (s.started ? " · " + fmtDate(s.started).slice(0, 10) : "");
+  parts.push(title);
+  parts.push(t("tipReplies", {n: fmt(s.n)}) + " · " + (s.handAt ? t("tipHand", {t: pretty(s.segs.find(x => x.k !== "main").m), a: s.handAt}) : t("tipNone", {f: pretty(s.segs[0].m)})));
+  if (MODE === "demo") { parts.push(t("tipCost", {c: s.cost.toFixed(2), m: s.min})); parts.push(s.ok ? t("tipPass") : t("tipFail", {p: Math.round(s.f * 100)})); }
+  else if (s.effort) parts.push(t("rEffort") + " " + s.effort);
+  return plain ? parts.join(". ") : "<b>" + esc(parts[0]) + "</b><br>" + parts.slice(1).map(esc).join("<br>");
+}
+const tip = $("tip");
+function showTip(s, ev, el) { tip.innerHTML = tipText(s); tip.hidden = false; if (el) { const r = el.getBoundingClientRect(); place(r.left, r.bottom + 6); } else moveTip(ev); }
+function moveTip(ev) { place(ev.clientX + 14, ev.clientY + 14); }
+function place(x, y) { const w = tip.offsetWidth, h = tip.offsetHeight; tip.style.left = Math.min(x, innerWidth - w - 8) + "px"; tip.style.top = (y + h > innerHeight - 8 ? y - h - 24 : y) + "px"; }
+function hideTip() { tip.hidden = true; }
+
+function renderBoard() {
+  const g = GROUPS[gi];
+  if (MODE === "demo") {
+    const L = LEVELS[g.key];
+    $("kFox").textContent = t("kFoxDemo", {f: foxName()}); $("kTort").textContent = t("kTortDemo", {t: tortName()}); $("kRes").textContent = t("kResDemo");
+    $("vFox").textContent = pctS(1 - L.share); $("vTort").textContent = pctS(L.share); $("vRes").textContent = L.passed + "/23";
+    $("mFox").style.width = (100 * (1 - L.share)) + "%"; $("mTort").style.width = (100 * L.share) + "%"; $("mRes").style.width = (100 * L.passed / 23) + "%";
+    $("sFox").innerHTML = t("sFoxDemo", {p: pctS(1 - L.spend)}); $("sTort").innerHTML = t("sTortDemo", {s: L.handed, n: 23, p: pctS(L.spend)});
+    $("sRes").innerHTML = t("sResDemo", {c: L.cost.toFixed(2), m: L.min});
+  } else {
+    let main = 0, oth = 0, auto = 0; const eff = {};
+    g.sessions.forEach(s => { s.segs.forEach(x => { if (x.k === "main") main += x.n; else oth += x.n; }); if (s.handBy === "auto") auto++; if (s.effort) eff[s.effort] = (eff[s.effort] || 0) + 1; });
+    const tot = main + oth || 1, e = Object.entries(eff).sort((a, b) => b[1] - a[1])[0];
+    $("kFox").textContent = t("kFoxMine", {f: foxName()}); $("kTort").textContent = t("kTortMine"); $("kRes").textContent = t("kResMine");
+    $("vFox").textContent = pctS(main / tot); $("vTort").textContent = pctS(oth / tot); $("vRes").textContent = fmt(g.sessions.length);
+    $("mFox").style.width = (100 * main / tot) + "%"; $("mTort").style.width = (100 * oth / tot) + "%"; $("mRes").style.width = "100%";
+    $("sFox").innerHTML = t("sFoxMine", {n: fmt(main)}); $("sTort").innerHTML = t("sTortMine", {n: fmt(oth), s: auto});
+    $("sRes").innerHTML = t("sResMine", {r: fmt(main + oth), e: e ? esc(e[0]) : "?"});
+  }
+}
+
+function renderChips() {
+  const box = $("chips"); box.textContent = "";
+  GROUPS.forEach((g, i) => { const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = groupName(g); b.setAttribute("aria-pressed", String(i === gi)); b.onclick = () => selectGroup(i); box.appendChild(b); });
+  $("chipsLabel").textContent = MODE === "demo" ? t("effort") : t("project");
+}
+function selectGroup(i, noPlay) { gi = i; renderChips(); renderBoard(); if (player && !noPlay) player.playGroup(GROUPS[gi]); }
+function selectGroupOf(s) {
+  if (MODE === "demo") { const i = GROUPS.findIndex(g => g.key === s.group); if (i !== gi) selectGroup(i, true); }
+}
+
+function receiptLines(s, info) {
+  const L = [];
+  const row = (a, b, c) => L.push('<div class="rl' + (c === undefined ? " two" : "") + ' ln"><span>' + esc(a) + "</span><span>" + esc(b) + "</span>" + (c === undefined ? "" : "<span>" + esc(c) + "</span>") + "</div>");
+  L.push('<div class="rh ln">' + esc(t("rTitle")) + "</div>");
+  if (MODE === "demo") {
+    L.push('<div class="rs ln">' + esc(t("rSession", {lvl: t("levels")[s.group], i: info.i, n: info.n})) + "</div>");
+    row(t("rTask"), s.title);
+    L.push('<div class="rr ln"></div>');
+    const by = {}; s.segs.forEach(x => by[x.m] = (by[x.m] || 0) + x.n);
+    s.costBy.forEach(([m, c]) => { if (by[m] || c > 0.004) row(pretty(m), fmt(by[m] || 0), "$" + c.toFixed(2)); });
+    if (s.other > 0.004) row(t("rOther"), "", "$" + s.other.toFixed(2));
+    L.push('<div class="rr ln"></div>');
+    if (s.handAt) row(t("rHanded"), String(s.handAt));
+    row(t("rTime"), t("rMin", {m: s.min}));
+    row(t("rTotal"), "$" + s.cost.toFixed(2));
+    L.push('<div class="res ln ' + (s.ok ? "ok" : "bad") + '">' + esc(s.ok ? t("rPassed") : t("rFailed", {p: Math.round(s.f * 100)})) + "</div>");
+  } else {
+    L.push('<div class="rs ln">' + esc(s.title + (s.started ? " · " + fmtDate(s.started) : "")) + "</div>");
+    if (s.effort) row(t("rEffort"), s.effort);
+    L.push('<div class="rr ln"></div>');
+    const by = {}; s.segs.forEach(x => by[x.m] = (by[x.m] || 0) + x.n);
+    Object.entries(by).forEach(([m, n]) => row(pretty(m), fmt(n) + " " + t("rReplies")));
+    L.push('<div class="rr ln"></div>');
+    if (s.handAt) { row(t("rChanged"), String(s.handAt)); L.push('<div class="rs ln">' + esc(s.handBy === "you" ? t("rByYou") : t("rByAuto")) + "</div>"); }
+    const sub = Object.values(s.sub || {}).reduce((a, b) => a + b, 0); if (sub) row(t("rSub"), fmt(sub));
+    const tok = Object.values(s.tok || {}).reduce((a, b) => a + b, 0); if (tok) row(t("rTok"), fmt(tok));
+    if (s.min != null) row(t("rTime"), t("rMin", {m: s.min}));
+  }
+  L.push('<div class="rf ln">' + esc(t("rThanks")) + "</div>");
+  return L.join("");
+}
+let receiptOn = 0;
+function printReceipt(s, instant, info) {
+  const r = $("receipt"); r.innerHTML = receiptLines(s, info || {i: 1, n: 1}); r.classList.add("show");
+  receiptOn = instant ? 999 : 0; revealReceipt(instant ? 999 : 0);
+}
+function revealReceipt(k) { const ls = $("receipt").querySelectorAll(".ln"); ls.forEach((l, i) => l.classList.toggle("on", i < k)); }
+function hideReceipt() { $("receipt").classList.remove("show"); }
+
+function applyLang() {
+  document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+  document.querySelectorAll("[data-i]").forEach(el => { const v = t(el.dataset.i); if (typeof v !== "string") return; if (el.hasAttribute("data-html")) el.innerHTML = v; else el.textContent = v; });
+  document.querySelectorAll("#langs button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.l === lang)));
+  document.querySelectorAll("[data-copy]").forEach(b => b.textContent = t("copy"));
+}
+function refreshAll(replay) {
+  applyLang();
+  $("castFox").textContent = t(MODE === "demo" ? "castFoxDemo" : "castFoxMine", {f: foxName()});
+  $("castTort").textContent = t(MODE === "demo" ? "castTortDemo" : "castTortMine", {t: tortName()});
+  $("src").textContent = MODE === "demo" ? t("srcDemo") : (isSample ? t("srcSample") : t("srcMine", {file: fileName, n: fmt(SESS.length), f: foxModel}));
+  $("play").textContent = paused ? t("resume") : t("play");
+  renderChips(); renderBoard(); renderStrips();
+  if (player) { player.setNames(foxName(), tortName()); if (replay) player.playGroup(GROUPS[gi]); else player.refreshHud(); }
+}
+let paused = false, speed = 2, player = null;
+
+function start3D(){
+const stage=$("stage");
+let renderer;
+try{ renderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); }
+catch(e){ $("hudRun").textContent=t("noWebGL"); }
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(30,16/9,0.1,120);
+const target=new THREE.Vector3(-0.2,1.0,-0.2);
+if(renderer){
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.1;
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.setClearColor(0x000000,0);
+  stage.prepend(renderer.domElement);
+}
+const hemi=new THREE.HemisphereLight(0xf4f8ff,0x8a9aa6,0.85); scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff3e2,1.35); sun.position.set(-5,11,7); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048); sun.shadow.bias=-0.0004; sun.shadow.radius=4;
+Object.assign(sun.shadow.camera,{left:-9,right:9,top:7,bottom:-7,near:1,far:30}); scene.add(sun);
+const fill=new THREE.DirectionalLight(0xcfe3ff,0.35); fill.position.set(7,4,5); scene.add(fill);
+
+const C=h=>new THREE.Color(h).convertSRGBToLinear();
+const mat=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:C(c),roughness:0.72,metalness:0},o||{}));
+function mesh(geo,m,x,y,z){ const o=new THREE.Mesh(geo,m); o.position.set(x||0,y||0,z||0); o.castShadow=true; o.receiveShadow=true; return o; }
+const put=(parent,o)=>{ parent.add(o); return o; };
+const sph=(r,s)=>new THREE.SphereGeometry(r,s||28,Math.max(14,((s||28)*0.7)|0));
+function rbox(w,h,d,r,seg){
+  r=Math.min(r,w/2-0.001,h/2-0.001,d/2-0.001);
+  const s=new THREE.Shape(), x=-(w/2-r), y=-(h/2-r), W=w-2*r, H=h-2*r, rr=Math.min(r*0.001,0.0001);
+  s.moveTo(x,y); s.lineTo(x+W,y); s.lineTo(x+W,y+H); s.lineTo(x,y+H); s.lineTo(x,y);
+  const g=new THREE.ExtrudeGeometry(s,{depth:Math.max(0.0001,d-2*r),bevelEnabled:true,bevelThickness:r,bevelSize:r,bevelSegments:seg||4,curveSegments:4});
+  g.translate(0,0,-(d-2*r)/2); g.computeVertexNormals(); return g;
+}
+function canvasTex(w,h,draw){ const c=document.createElement("canvas"); c.width=w; c.height=h; draw(c.getContext("2d"),w,h); const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=4; return t; }
+function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+const floorMat=mat("#F4F7F8",{roughness:0.95}), sideMat=mat("#AFC4CE",{roughness:0.9});
+// ExtrudeGeometry groups: 0 = the front and back caps, 1 = the sides, which include the top.
+const plinth=mesh(rbox(16.2,0.5,6.4,0.3,5),[sideMat,floorMat],-0.3,-0.25,-0.75); scene.add(plinth);
+
+// rugs color the two work zones
+const rugFM=mat("#F6D2B8",{roughness:1}), rugTM=mat("#BFE3D2",{roughness:1});
+const rugF=mesh(rbox(3.0,0.03,2.3,0.4,3),rugFM,1.9,0.02,-0.9); rugF.castShadow=false; scene.add(rugF);
+const rugT=mesh(rbox(3.0,0.03,2.3,0.4,3),rugTM,5.1,0.02,-0.9); rugT.castShadow=false; scene.add(rugT);
+
+// conveyor belt
+const beltTex=canvasTex(512,64,(c,w,h)=>{ c.fillStyle="#2B3942"; c.fillRect(0,0,w,h); c.fillStyle="#34454F"; for(let i=0;i<w;i+=32) c.fillRect(i,0,4,h); });
+beltTex.wrapS=THREE.RepeatWrapping; beltTex.repeat.set(3,1);
+const BELT_X0=-6.9, BELT_X1=-1.55, BELT_Z=1.05, BELT_TOP=0.7, BELT_W=1.05;
+const beltLen=BELT_X1-BELT_X0+0.4, beltCX=(BELT_X0+BELT_X1)/2;
+const beltM=mat("#2B3942",{roughness:0.9}), beltTopM=new THREE.MeshStandardMaterial({map:beltTex,roughness:0.9});
+const belt=mesh(new THREE.BoxGeometry(beltLen,0.08,BELT_W),[beltM,beltM,beltTopM,beltM,beltM,beltM],beltCX,BELT_TOP-0.04,BELT_Z); scene.add(belt);
+const railM=mat("#D9E2E7",{metalness:0.55,roughness:0.35});
+[-1,1].forEach(s=>scene.add(mesh(rbox(beltLen+0.1,0.2,0.1,0.04),railM,beltCX,BELT_TOP-0.02,BELT_Z+s*(BELT_W/2+0.05))));
+for(let i=0;i<=4;i++){
+  const x=BELT_X0+0.1+i*(beltLen-0.4)/4;
+  [-1,1].forEach(s=>scene.add(mesh(new THREE.CylinderGeometry(0.05,0.06,BELT_TOP-0.1,12),mat("#8FA3AE",{metalness:0.5,roughness:0.4}),x,(BELT_TOP-0.1)/2,BELT_Z+s*(BELT_W/2-0.05))));
+}
+const rollers=[];
+[BELT_X0-0.15,BELT_X1+0.15].forEach(x=>{ const r=mesh(new THREE.CylinderGeometry(0.09,0.09,BELT_W+0.05,18),railM,x,BELT_TOP-0.06,BELT_Z); r.rotation.x=Math.PI/2; scene.add(r); rollers.push(r); });
+
+// inbox chute where parcels appear
+const chute=new THREE.Group(); chute.position.set(BELT_X0-0.05,0,BELT_Z); scene.add(chute);
+const chuteM=mat("#7C93A1",{roughness:0.5,metalness:0.2});
+put(chute,mesh(rbox(0.95,1.15,1.25,0.12),chuteM,-0.1,BELT_TOP+0.95,0));
+put(chute,mesh(rbox(0.72,0.55,1.3,0.06),mat("#23313A",{roughness:0.9}),0.12,BELT_TOP+0.38,0));
+const inboxSign=canvasTex(256,96,(c,w,h)=>{ c.fillStyle="#F4F7F8"; roundRect(c,4,4,w-8,h-8,18); c.fill(); c.fillStyle="#132029"; c.font="600 40px Fredoka, Nunito Sans, sans-serif"; c.textAlign="center"; c.textBaseline="middle"; c.fillText("REPLIES",w/2,h/2+2); });
+const inboxPlate=new THREE.Mesh(new THREE.PlaneGeometry(0.78,0.29),new THREE.MeshStandardMaterial({map:inboxSign,roughness:0.6}));
+inboxPlate.position.set(-0.1,BELT_TOP+1.2,0.635); chute.add(inboxPlate);
+
+// checkpoint gate
+const CHECK_X=BELT_X1-0.25;
+const gateM=mat("#4E6371",{roughness:0.45,metalness:0.35});
+[-1,1].forEach(s=>scene.add(mesh(rbox(0.16,2.7,0.16,0.05),gateM,CHECK_X,1.35,BELT_Z+s*0.78)));
+scene.add(mesh(rbox(0.3,0.34,1.9,0.08),gateM,CHECK_X,2.72,BELT_Z));
+const gateSignTex=canvasTex(512,96,(c,w,h)=>{ c.fillStyle="#F2C14E"; roundRect(c,0,0,w,h,20); c.fill(); c.fillStyle="#1B232A"; c.font="700 50px Fredoka, Nunito Sans, sans-serif"; c.textAlign="center"; c.textBaseline="middle"; c.fillText("SAFETY CHECK",w/2,h/2+3); });
+const gateSign=new THREE.Mesh(new THREE.PlaneGeometry(1.7,0.32),new THREE.MeshStandardMaterial({map:gateSignTex,roughness:0.5}));
+gateSign.position.set(CHECK_X,2.72,BELT_Z); gateSign.rotation.y=Math.PI/2; gateSign.position.x+=0.16; scene.add(gateSign);
+// on this camera the sign's front faces +x; add one facing the camera too
+const gateSignFront=gateSign.clone(); gateSignFront.rotation.y=0; gateSignFront.position.set(CHECK_X,2.72,BELT_Z+0.96); gateSignFront.scale.set(0.95,0.95,1); scene.add(gateSignFront);
+const lampHead=mesh(new THREE.CylinderGeometry(0.1,0.24,0.22,24),mat("#2F3E48",{metalness:0.4,roughness:0.4}),CHECK_X,2.44,BELT_Z); scene.add(lampHead);
+const beamMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.1,depthWrite:false,side:THREE.DoubleSide});
+const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.62,1.62,40,1,true),beamMat); beam.position.set(CHECK_X,1.52,BELT_Z); scene.add(beam);
+const bulbMat=new THREE.MeshBasicMaterial({color:0xffffff}); const bulb=new THREE.Mesh(sph(0.09,16),bulbMat); bulb.position.set(CHECK_X,2.32,BELT_Z); scene.add(bulb);
+const lampLight=new THREE.PointLight(0xffffff,0.3,3.5,2); lampLight.position.set(CHECK_X,1.9,BELT_Z); scene.add(lampLight);
+const spot=mesh(new THREE.CircleGeometry(0.55,40),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}),CHECK_X,BELT_TOP+0.005,BELT_Z); spot.rotation.x=-Math.PI/2; spot.castShadow=false; scene.add(spot);
+const LAMP={idle:new THREE.Color(0xffffff),pass:new THREE.Color(0x4fd69a),flag:new THREE.Color(0xffae2b)};
+function setLamp(c,s){ beamMat.color.copy(c); bulbMat.color.copy(c).lerp(LAMP.idle,0.35); lampLight.color.copy(c); spot.material.color.copy(c);
+  beamMat.opacity=0.06+0.2*s; lampLight.intensity=0.3+2.2*s; spot.material.opacity=0.45*s; }
+
+const owl=new THREE.Group(); owl.position.set(CHECK_X+0.95,0,BELT_Z-1.05); scene.add(owl);
+const stoolM=mat("#6B7F8B",{roughness:0.5,metalness:0.3});
+put(owl,mesh(new THREE.CylinderGeometry(0.34,0.34,0.08,28),stoolM,0,0.78,0));
+put(owl,mesh(new THREE.CylinderGeometry(0.05,0.07,0.76,12),stoolM,0,0.38,0));
+put(owl,mesh(new THREE.CylinderGeometry(0.26,0.3,0.05,24),stoolM,0,0.025,0));
+const owlM=mat("#9C8468",{roughness:0.85}), owlDark=mat("#7A6550",{roughness:0.85}), owlBellyTex=canvasTex(128,128,(c,w,h)=>{ c.fillStyle="#EFE3CD"; c.fillRect(0,0,w,h); c.strokeStyle="#CDB894"; c.lineWidth=5; for(let y=18;y<h;y+=22) for(let x=(y/22%2)*12;x<w;x+=24){ c.beginPath(); c.arc(x,y,8,0.2*Math.PI,0.8*Math.PI); c.stroke(); } });
+const owlBellyM=new THREE.MeshStandardMaterial({map:owlBellyTex,roughness:0.9});
+const owlRig=new THREE.Group(); owlRig.position.y=0.82; owl.add(owlRig);
+const owlBody=put(owlRig,mesh(sph(0.44),owlM,0,0.5,0)); owlBody.scale.set(1,1.12,0.92);
+put(owlRig,mesh(sph(0.34),owlBellyM,0,0.45,0.17)).scale.set(0.95,1.1,0.62);
+[-0.13,0.13].forEach(x=>{ const f=put(owlRig,mesh(sph(0.08,12),mat("#E4A43A"),x,0.03,0.2)); f.scale.set(1,0.5,1.3); });
+const owlHead=new THREE.Group(); owlHead.position.set(0,1.1,0.02); owlRig.add(owlHead);
+put(owlHead,mesh(sph(0.37),owlM)).scale.set(1.12,0.95,0.95);
+const faceDisc=put(owlHead,mesh(sph(0.3),mat("#E9DCC4",{roughness:0.9}),0,-0.02,0.12)); faceDisc.scale.set(1.15,0.85,0.6);
+const eyeWM=mat("#FFFFFF",{roughness:0.25}), pupilM=mat("#15181B",{roughness:0.15}), irisM=mat("#F1B62C",{roughness:0.3});
+const owlPupils=[], owlLids=[];
+[-0.14,0.14].forEach(x=>{
+  const w=put(owlHead,mesh(sph(0.12),eyeWM,x,0.0,0.27)); w.scale.set(1,1,0.55);
+  const ir=put(owlHead,mesh(sph(0.075),irisM,x,0.0,0.32)); ir.scale.z=0.5;
+  const p=put(owlHead,mesh(sph(0.045),pupilM,x,0.0,0.345)); owlPupils.push(p);
+  put(owlHead,mesh(sph(0.016,8),eyeWM,x+0.02,0.025,0.37));
+  const lid=put(owlHead,mesh(sph(0.128),owlM,x,0.0,0.265)); lid.scale.set(1,0.02,0.58); owlLids.push(lid);
+});
+const owlBeak=put(owlHead,mesh(new THREE.ConeGeometry(0.055,0.15,14),mat("#E4A43A"),0,-0.12,0.35)); owlBeak.rotation.x=Math.PI*0.9;
+// security cap
+const capM=mat("#26394A",{roughness:0.6}), capBand=mat("#F2C14E",{roughness:0.5});
+put(owlHead,mesh(new THREE.CylinderGeometry(0.3,0.34,0.2,28),capM,0,0.36,-0.02));
+put(owlHead,mesh(new THREE.CylinderGeometry(0.343,0.343,0.05,28),capBand,0,0.28,-0.02));
+const visor=put(owlHead,mesh(new THREE.CylinderGeometry(0.3,0.3,0.03,28,1,false,-Math.PI/2,Math.PI),capM,0,0.27,0.08)); visor.scale.set(1,1,0.9); visor.rotation.x=0.18;
+put(owlHead,mesh(new THREE.OctahedronGeometry(0.06),capBand,0,0.38,0.3)).scale.set(1,1,0.4);
+[-0.25,0.25].forEach(x=>{ const t=put(owlHead,mesh(new THREE.ConeGeometry(0.07,0.2,12),owlDark,x,0.34,-0.04)); t.rotation.z=x>0?-0.5:0.5; });
+const owlWings=[];
+[-1,1].forEach(s=>{ const pv=new THREE.Group(); pv.position.set(0.4*s,0.72,-0.02); const w=mesh(sph(0.27),owlDark,0.04*s,-0.22,0); w.scale.set(0.34,1,0.78); pv.add(w); owlRig.add(pv); owlWings.push({pv,s}); });
+// "!" bubble over the owl
+const bangTex=canvasTex(128,128,(c,w,h)=>{ c.fillStyle="#FFFFFF"; c.beginPath(); c.arc(64,58,48,0,Math.PI*2); c.fill(); c.beginPath(); c.moveTo(50,98); c.lineTo(40,122); c.lineTo(72,100); c.fill(); c.fillStyle="#E0473E"; c.font="700 70px Fredoka, sans-serif"; c.textAlign="center"; c.textBaseline="middle"; c.fillText("!",64,60); });
+const bang=new THREE.Sprite(new THREE.SpriteMaterial({map:bangTex,transparent:true,depthWrite:false})); bang.scale.set(0.55,0.55,1); bang.position.set(0.55,2.45,0); bang.material.opacity=0; owl.add(bang);
+
+const woodM=mat("#C79A6A",{roughness:0.6}), woodDark=mat("#8C6444",{roughness:0.7});
+const FOX_DESK=new THREE.Vector3(1.85,0,-0.95), TORT_DESK=new THREE.Vector3(5.05,0,-0.95);
+function desk(p,plateText,plateColor){
+  const g=new THREE.Group(); g.position.copy(p); scene.add(g);
+  put(g,mesh(rbox(2.2,0.1,1.05,0.04),woodM,0,0.66,0));
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>put(g,mesh(rbox(0.1,0.62,0.1,0.03),woodDark,a*1.0,0.31,b*0.43)));
+  put(g,mesh(rbox(2.0,0.08,0.9,0.03),woodDark,0,0.18,0));
+  const tex=canvasTex(512,128,(c,w,h)=>{});
+  const plate=new THREE.Mesh(new THREE.PlaneGeometry(1.1,0.275),new THREE.MeshStandardMaterial({map:tex,roughness:0.5}));
+  plate.position.set(0,0.5,0.535); g.add(plate);
+  g.userData.setPlate=(text)=>{ const c=tex.image, x=c.getContext("2d"); x.clearRect(0,0,c.width,c.height); x.fillStyle="#FFFFFF"; roundRect(x,4,4,c.width-8,c.height-8,26); x.fill(); x.lineWidth=8; x.strokeStyle=plateColor; roundRect(x,8,8,c.width-16,c.height-16,22); x.stroke(); x.fillStyle="#132029"; let fs=64; x.font=`700 ${fs}px Fredoka, Nunito Sans, sans-serif`; while(x.measureText(text).width>c.width-60&&fs>28){ fs-=4; x.font=`700 ${fs}px Fredoka, Nunito Sans, sans-serif`; } x.textAlign="center"; x.textBaseline="middle"; x.fillText(text,c.width/2,c.height/2+3); tex.needsUpdate=true; };
+  g.userData.setPlate(plateText); return g;
+}
+const foxDesk=desk(FOX_DESK,"OPUS 5.5","#D2601C"), tortDesk=desk(TORT_DESK,"OPUS 4.8","#23805D");
+// laptop for the fox
+const screenM=new THREE.MeshBasicMaterial({color:0xffffff});
+const screenTex=canvasTex(256,160,(c,w,h)=>{ c.fillStyle="#1B2630"; c.fillRect(0,0,w,h); const cols=["#F28C4E","#7FD1AE","#9DB4C0","#F2C14E"]; for(let i=0;i<9;i++){ c.fillStyle=cols[i%4]; c.fillRect(18+(i%3)*10,16+i*15,40+((i*53)%120),7); } });
+screenM.map=screenTex;
+(function(){ const g=new THREE.Group(); g.position.set(FOX_DESK.x+0.45,0.72,FOX_DESK.z+0.05); scene.add(g);
+  const alu=mat("#C3CCD2",{metalness:0.6,roughness:0.3});
+  put(g,mesh(rbox(0.66,0.035,0.44,0.015),alu,0,0,0.06));
+  const lid=new THREE.Group(); lid.position.set(0,0.02,-0.16); lid.rotation.x=-0.22; g.add(lid);
+  put(lid,mesh(rbox(0.66,0.44,0.03,0.015),alu,0,0.22,0));
+  const scr=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.38),screenM); scr.position.set(0,0.22,-0.017); scr.rotation.y=Math.PI; lid.add(scr);
+  const back=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.38),screenM); back.position.set(0,0.22,0.017); lid.add(back);
+})();
+// typewriter for the tortoise
+(function(){ const g=new THREE.Group(); g.position.set(TORT_DESK.x+0.45,0.72,TORT_DESK.z+0.08); scene.add(g);
+  const tw=mat("#2F5D4A",{roughness:0.45,metalness:0.25});
+  put(g,mesh(rbox(0.7,0.2,0.46,0.06),tw,0,0.1,0));
+  put(g,mesh(rbox(0.56,0.05,0.2,0.02),mat("#1E2A25"),0,0.21,0.1)).rotation.x=-0.25;
+  const roll=put(g,mesh(new THREE.CylinderGeometry(0.06,0.06,0.78,20),mat("#1E2A25"),0,0.26,-0.17)); roll.rotation.z=Math.PI/2;
+  put(g,mesh(new THREE.BoxGeometry(0.46,0.34,0.01),mat("#FBF8EF",{roughness:0.95}),0,0.43,-0.2)).rotation.x=-0.12;
+  // tea mug
+  put(g,mesh(new THREE.CylinderGeometry(0.08,0.07,0.16,20),mat("#F2EBDD"),-0.9,0.08,0.15));
+})();
+// plant
+(function(){ const g=new THREE.Group(); g.position.set(6.7,0,-2.9); scene.add(g);
+  put(g,mesh(new THREE.CylinderGeometry(0.3,0.24,0.5,24),mat("#D9C2A7",{roughness:0.8}),0,0.25,0));
+  const leafM=mat("#4E9A6B",{roughness:0.7});
+  [[0,0.95,0,0.34],[0.22,0.75,0.12,0.24],[-0.2,0.78,-0.05,0.26],[0.05,1.25,-0.05,0.22]].forEach(([x,y,z,r])=>put(g,mesh(sph(r,16),leafM,x,y,z)));
+})();
+
+const fox=new THREE.Group(); fox.position.set(FOX_DESK.x-0.2,0,FOX_DESK.z-0.72); scene.add(fox);
+const foxRig=new THREE.Group(); fox.add(foxRig);
+const foxM=mat("#E2772C",{roughness:0.8}), foxWhiteM=mat("#FBF4EA",{roughness:0.85}), darkM=mat("#2A2320",{roughness:0.4});
+put(foxRig,mesh(new THREE.CylinderGeometry(0.34,0.38,0.55,24),mat("#56717F",{roughness:0.6}),0,0.28,-0.05)); // stool
+const foxBody=put(foxRig,mesh(sph(0.42),foxM,0,0.98,0)); foxBody.scale.set(0.95,1.18,0.86);
+put(foxRig,mesh(sph(0.3),foxWhiteM,0,0.95,0.18)).scale.set(0.9,1.12,0.62);
+[-0.2,0.2].forEach(x=>{ const f=put(foxRig,mesh(sph(0.13,16),darkM,x,0.6,0.3)); f.scale.set(1,0.7,1.4); });
+const foxHead=new THREE.Group(); foxHead.position.set(0,1.62,0.05); foxRig.add(foxHead);
+put(foxHead,mesh(sph(0.35),foxM)).scale.set(1.12,0.95,1);
+[-1,1].forEach(s=>{ const ch=put(foxHead,mesh(sph(0.17,16),foxWhiteM,0.19*s,-0.1,0.16)); ch.scale.set(1,0.8,0.9); });
+const snout=put(foxHead,mesh(new THREE.ConeGeometry(0.15,0.32,20),foxWhiteM,0,-0.09,0.36)); snout.rotation.x=Math.PI/2;
+put(foxHead,mesh(sph(0.05,12),darkM,0,-0.085,0.52));
+const foxEyes=[];
+[-0.13,0.13].forEach(x=>{ const e=put(foxHead,mesh(sph(0.048,14),darkM,x,0.07,0.3)); e.scale.z=0.7; foxEyes.push(e); put(foxHead,mesh(sph(0.014,8),eyeWM,x+0.015,0.09,0.335)); });
+const foxEars=[];
+[-1,1].forEach(s=>{ const e=put(foxHead,mesh(new THREE.ConeGeometry(0.13,0.34,20),foxM,0.2*s,0.35,-0.02)); e.rotation.z=-0.28*s; e.scale.z=0.55; foxEars.push(e);
+  put(e,mesh(new THREE.ConeGeometry(0.06,0.13,16),darkM,0,0.12,0.0));
+  const inner=put(e,mesh(new THREE.ConeGeometry(0.075,0.2,16),foxWhiteM,0,-0.02,0.05)); inner.scale.z=0.4; });
+const foxTail=new THREE.Group(); foxTail.position.set(0.28,0.75,-0.3); foxRig.add(foxTail);
+const tailA=put(foxTail,mesh(sph(0.2),foxM,0.18,0.18,-0.08)); tailA.scale.set(0.85,1.7,0.85); tailA.rotation.z=-0.6;
+const tailB=put(foxTail,mesh(sph(0.16),foxWhiteM,0.42,0.48,-0.12)); tailB.scale.set(0.9,1.2,0.9); tailB.rotation.z=-0.6;
+const foxArms=[];
+[-1,1].forEach(s=>{ const a=put(foxRig,mesh(sph(0.1,16),foxM,0.28*s,1.02,0.36)); a.scale.set(0.8,0.8,2); foxArms.push(a);
+  put(a,mesh(sph(0.07,12),darkM,0,0,0.1)).scale.set(1.2,1.2,0.5); });
+
+const tort=new THREE.Group(); tort.position.set(TORT_DESK.x-0.2,0,TORT_DESK.z-0.72); scene.add(tort);
+const tortRig=new THREE.Group(); tort.add(tortRig);
+put(tortRig,mesh(new THREE.CylinderGeometry(0.4,0.44,0.5,24),mat("#56717F",{roughness:0.6}),0,0.25,-0.1)); // stool
+const skinM=mat("#A8C58A",{roughness:0.85}), skinDark=mat("#86A56D",{roughness:0.85});
+const shellTex=canvasTex(512,256,(c,w,h)=>{ c.fillStyle="#3E7D57"; c.fillRect(0,0,w,h); const r=34; c.lineWidth=7; c.strokeStyle="#2D5E41"; c.fillStyle="#4E9467";
+  for(let row=0;row<6;row++) for(let col=0;col<10;col++){ const cx=col*r*1.55+(row%2)*r*0.78, cy=row*r*1.35+10; c.beginPath(); for(let k=0;k<6;k++){ const a=Math.PI/3*k+Math.PI/6; c.lineTo(cx+r*0.78*Math.cos(a),cy+r*0.78*Math.sin(a)); } c.closePath(); c.fill(); c.stroke(); } });
+const shellM=new THREE.MeshStandardMaterial({map:shellTex,roughness:0.55});
+const tBody=put(tortRig,mesh(sph(0.36),skinM,0,0.9,0.1)); tBody.scale.set(1,1.1,0.85);
+put(tortRig,mesh(sph(0.28),mat("#E8D9A6",{roughness:0.8}),0,0.88,0.24)).scale.set(0.85,1.05,0.4);
+const shell=put(tortRig,mesh(new THREE.SphereGeometry(0.64,40,20,0,Math.PI*2,0,Math.PI/2),shellM,0,0.88,-0.2)); shell.rotation.x=-Math.PI/2+0.55; shell.scale.set(1.02,0.95,1);
+const rim=put(tortRig,mesh(new THREE.TorusGeometry(0.64,0.075,14,56),mat("#2F6546",{roughness:0.55}),0,0.88,-0.2)); rim.rotation.x=0.55; rim.scale.set(1.02,0.95,1);
+const tHead=new THREE.Group(); tHead.position.set(0,1.45,0.14); tortRig.add(tHead);
+put(tHead,mesh(new THREE.CylinderGeometry(0.12,0.16,0.32,18),skinM,0,-0.22,-0.03));
+put(tHead,mesh(sph(0.27),skinM)).scale.set(1.05,0.9,1);
+const glassM=mat("#3A2E24",{metalness:0.5,roughness:0.35}), lensM=new THREE.MeshStandardMaterial({color:0xdff2ff,transparent:true,opacity:0.35,roughness:0.05,metalness:0.2});
+const tEyes=[];
+[-0.1,0.1].forEach(x=>{ const e=put(tHead,mesh(sph(0.036,12),darkM,x,0.05,0.245)); tEyes.push(e);
+  put(tHead,mesh(new THREE.TorusGeometry(0.075,0.013,10,28),glassM,x,0.05,0.27));
+  const l=put(tHead,mesh(new THREE.CircleGeometry(0.072,24),lensM,x,0.05,0.272)); l.castShadow=false; });
+put(tHead,mesh(new THREE.CylinderGeometry(0.008,0.008,0.06,8),glassM,0,0.06,0.28)).rotation.z=Math.PI/2;
+put(tHead,mesh(new THREE.TorusGeometry(0.06,0.012,8,20,Math.PI),darkM,0,-0.08,0.24)).rotation.z=Math.PI;
+// knitted scarf
+const scarfM=mat("#D65C5C",{roughness:0.95});
+put(tortRig,mesh(new THREE.TorusGeometry(0.17,0.06,12,28),scarfM,0,1.24,0.14)).rotation.x=Math.PI/2;
+put(tortRig,mesh(rbox(0.1,0.28,0.05,0.02),scarfM,0.1,1.08,0.3)).rotation.z=0.2;
+const tArms=[];
+[-1,1].forEach(s=>{ const a=put(tortRig,mesh(new THREE.CylinderGeometry(0.075,0.085,0.42,14),skinM,0.3*s,0.98,0.32)); a.rotation.x=1.15; tArms.push(a); });
+
+const kraftM=mat("#C9975A",{roughness:0.8}), tapeM=mat("#E8D0A0",{roughness:0.6});
+function stampTex(ok){ return canvasTex(128,128,(c,w,h)=>{ c.fillStyle=ok?"#3FBF86":"#D8434F"; c.beginPath(); c.arc(64,64,58,0,Math.PI*2); c.fill(); c.strokeStyle="#FFFFFF"; c.lineWidth=14; c.lineCap="round"; c.lineJoin="round"; c.beginPath();
+  if(ok){ c.moveTo(36,66); c.lineTo(56,86); c.lineTo(92,44); } else { c.moveTo(64,32); c.lineTo(64,72); c.moveTo(64,94); c.lineTo(64,95); } c.stroke(); }); }
+const stampOkM=new THREE.MeshBasicMaterial({map:stampTex(true),transparent:true}), stampFlagM=new THREE.MeshBasicMaterial({map:stampTex(false),transparent:true});
+const boxGeo=rbox(0.44,0.32,0.44,0.035,2), tapeGeo=new THREE.BoxGeometry(0.445,0.012,0.11), stampGeo=new THREE.PlaneGeometry(0.2,0.2);
+function makeParcel(){
+  const g=new THREE.Group(); g.add(mesh(boxGeo,kraftM)); g.add(mesh(tapeGeo,tapeM,0,0.161,0));
+  const st=new THREE.Mesh(stampGeo,stampOkM); st.rotation.x=-Math.PI/2; st.position.set(0.1,0.169,0.1); st.visible=false; g.add(st);
+  g.userData.stamp=st; scene.add(g); return g;
+}
+
+const puffs=[]; const puffGeo=sph(0.06,10);
+function puff(pos,color){ for(let i=0;i<9;i++){ const m=new THREE.Mesh(puffGeo,new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.9,depthWrite:false})); m.position.copy(pos); const a=i/9*Math.PI*2; m.userData={v:new THREE.Vector3(Math.cos(a)*1.3,1.2+Math.random()*0.6,Math.sin(a)*1.3),life:0.7}; scene.add(m); puffs.push(m);} }
+function plusSprite(color){ const t=canvasTex(128,96,(c,w,h)=>{ c.fillStyle=color; c.font="700 64px Fredoka, Nunito Sans, sans-serif"; c.textAlign="center"; c.textBaseline="middle"; c.lineWidth=10; c.strokeStyle="#FFFFFF"; c.strokeText("+1",w/2,h/2); c.fillText("+1",w/2,h/2); });
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthWrite:false})); s.scale.set(0.55,0.41,1); return s; }
+const plusFox=plusSprite("#D2601C"), plusTort=plusSprite("#23805D");
+[plusFox,plusTort].forEach(s=>{ s.material.opacity=0; scene.add(s); });
+let plusFoxT=0, plusTortT=0;
+
+
+const stampRouteM = new THREE.MeshBasicMaterial({transparent:true, map: canvasTex(128,128,(c)=>{ c.fillStyle="#2A9D7C"; c.beginPath(); c.arc(64,64,58,0,Math.PI*2); c.fill(); c.strokeStyle="#FFFFFF"; c.lineWidth=13; c.lineCap="round"; c.lineJoin="round"; c.beginPath(); c.moveTo(32,64); c.lineTo(94,64); c.moveTo(72,40); c.lineTo(96,64); c.lineTo(72,88); c.stroke(); })});
+function drawGate(text, bg, fg){
+  const cv = gateSignTex.image, x = cv.getContext("2d");
+  x.clearRect(0,0,cv.width,cv.height); x.fillStyle = bg; roundRect(x,0,0,cv.width,cv.height,20); x.fill();
+  x.fillStyle = fg; let fs = 50; const font = s => "700 " + s + "px Fredoka, Nunito Sans, sans-serif";
+  x.font = font(fs); while (x.measureText(text).width > cv.width - 40 && fs > 22) { fs -= 2; x.font = font(fs); }
+  x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(text, cv.width/2, cv.height/2 + 3); gateSignTex.needsUpdate = true;
+}
+const gateText = { to: n => lang === "zh" ? "交给 " + n : "TO " + n.toUpperCase(), all: n => lang === "zh" ? "之后全部交给 " + n : "NOW ALL TO " + n.toUpperCase(), you: n => lang === "zh" ? "你换成了 " + n : "YOU PICKED " + n.toUpperCase() };
+
+let sess = null, queue = [], qi = 0, boxes = [], per = 1, bi = 0, parcels = [], piles = {fox:[], tort:[]}, counts = {fox:0, tort:0};
+let spawnT = 0, phase = "run", phaseT = 0, handed = false, foxOffT = 0, foxOffV = 0;
+const SPAWN = 0.95, BELT_SPEED = 2.4, SCAN = 0.5, SCAN_FLAG = 1.0, SCAN_FAST = 0.22, FLY = 0.9;
+let foxReact = 0, tortReact = 0, owlFlap = 0, bangT = 0, lampS = 0, lampC = LAMP.idle, blinkT = 2, fBlinkT = 3, tBlinkT = 4, lookX = CHECK_X, simT = 0;
+let fName = "Opus 5.5", tName = "Opus 4.8";
+
+function buildBoxes(s){
+  per = Math.max(1, Math.ceil(s.n / 16));
+  const out = [];
+  s.segs.forEach(x => { const k = Math.max(1, Math.round(x.n / per)); const base = Math.floor(x.n / k), rem = x.n - base * k; for (let i = 0; i < k; i++) out.push({k: x.k, m: x.m, r: base + (i < rem ? 1 : 0)}); });
+  return out;
+}
+function clearScene(){
+  parcels.forEach(p => scene.remove(p.obj)); parcels = [];
+  ["fox","tort"].forEach(k => { piles[k].forEach(o => scene.remove(o)); piles[k] = []; });
+}
+function startSession(){
+  clearScene();
+  sess = queue[qi]; if (!sess) return;
+  boxes = buildBoxes(sess); bi = 0; spawnT = 0; phase = "run"; phaseT = 0; handed = false; foxOffT = 0;
+  counts = {fox:0, tort:0};
+  drawGate(gateText.to(pretty(sess.segs[0].m)), "#F2C14E", "#1B232A");
+  hideReceipt(); markStrip(sess.id); refreshHud();
+}
+function refreshHud(){
+  if (!sess) return;
+  const g = GROUPS[gi];
+  $("hudRun").textContent = MODE === "demo" ? t("hudDemo", {lvl: t("levels")[sess.group], i: qi + 1, n: queue.length, task: sess.title}) : t("hudMine", {grp: sess.title, i: qi + 1, n: queue.length});
+  $("hudN").textContent = per === 1 ? t("perBox1") : t("perBox", {k: per});
+  $("hudFox").style.width = (counts.fox / sess.n * 120) + "px"; $("hudTort").style.width = (counts.tort / sess.n * 120) + "px";
+  $("tagFoxN").textContent = fmt(counts.fox); $("tagTortN").textContent = fmt(counts.tort);
+}
+function pileSpot(key, i){
+  const d = key === "fox" ? FOX_DESK : TORT_DESK, col = i % 3, layer = Math.floor(i / 3);
+  return new THREE.Vector3(d.x - 0.88 + col * 0.47, 0.87 + layer * 0.33, d.z + 0.12);
+}
+function addToPile(key, obj){
+  const pile = piles[key]; pile.push(obj);
+  if (pile.length > 9) scene.remove(pile.shift());
+  pile.forEach((o, i) => { o.position.copy(pileSpot(key, i)); o.rotation.set(0, ((i * 0.37) % 0.4) - 0.2, 0); });
+}
+function nextSession(){ qi = (qi + 1) % queue.length; startSession(); }
+
+function step(dt){
+  const sdt = dt * speed; simT += sdt;
+  if (!sess) return;
+  if (phase === "run"){
+    spawnT -= sdt;
+    if (spawnT <= 0 && bi < boxes.length){
+      const obj = makeParcel(); obj.position.set(BELT_X0 + 0.1, BELT_TOP + 0.17, BELT_Z); obj.scale.setScalar(0.01);
+      const b = boxes[bi++];
+      parcels.push({obj, box: b, state: "belt", t: 0}); spawnT = SPAWN * (handed && b.k !== "main" ? 0.7 : 1);
+    }
+  }
+  beltTex.offset.x -= sdt * BELT_SPEED / beltLen * 3;
+  rollers.forEach(r => r.rotation.y -= sdt * BELT_SPEED / 0.09);
+  let scanning = false;
+  for (let i = parcels.length - 1; i >= 0; i--){
+    const p = parcels[i]; p.t += sdt;
+    if (p.state === "belt"){
+      const s = Math.min(1, p.t / 0.25); p.obj.scale.setScalar(s < 1 ? 1 - Math.pow(1 - s, 3) : 1);
+      p.obj.position.x += BELT_SPEED * sdt;
+      const ahead = parcels.some(q => q !== p && q.state === "scan");
+      if (p.obj.position.x >= CHECK_X - (ahead ? 0.55 : 0)){
+        p.obj.position.x = CHECK_X - (ahead ? 0.55 : 0);
+        if (!ahead){
+          p.state = "scan"; p.t = 0;
+          const k = p.box.k;
+          if (k === "main") p.kind = "pass";
+          else if (!handed) p.kind = k === "you" ? "you" : "flag";
+          else p.kind = "route";
+          p.dur = p.kind === "flag" ? SCAN_FLAG : p.kind === "you" ? SCAN : SCAN_FAST;
+        }
+      }
+    } else if (p.state === "scan"){
+      scanning = true;
+      if (p.kind === "flag") { lampC = LAMP.flag; lampS = Math.min(1, p.t / 0.15); } else lampS = Math.max(0, lampS - sdt * 2.2);
+      p.obj.position.y = BELT_TOP + 0.17 + Math.sin(Math.min(1, p.t / p.dur) * Math.PI) * 0.12;
+      const st = p.obj.userData.stamp;
+      if (p.kind === "flag" && p.t > 0.22 && !st.visible){ st.material = stampFlagM; st.visible = true; owlFlap = 1; bangT = 1; }
+      if (p.t >= p.dur){
+        if (p.kind === "flag"){ handed = true; foxOffT = 1; drawGate(gateText.all(pretty(p.box.m)), "#2A9D7C", "#FFFFFF"); }
+        if (p.kind === "you"){ handed = true; foxOffT = 1; drawGate(gateText.you(pretty(p.box.m)), "#8A99A6", "#FFFFFF"); }
+        if (p.kind === "pass" && handed){ handed = false; foxOffT = 0; drawGate(gateText.to(pretty(p.box.m)), "#F2C14E", "#1B232A"); }
+        p.state = "fly"; p.t = 0; p.from = p.obj.position.clone(); p.key = p.kind === "pass" ? "fox" : "tort";
+        p.to = pileSpot(p.key, Math.min(piles[p.key].length, 9)); p.spin = (Math.random() * 0.6 + 0.7) * (p.key === "tort" ? 1 : -1);
+      }
+    } else if (p.state === "fly"){
+      const u = Math.min(1, p.t / FLY), e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+      p.obj.position.lerpVectors(p.from, p.to, e); p.obj.position.y += Math.sin(Math.PI * e) * (p.key === "tort" ? 2.3 : 1.7);
+      p.obj.rotation.x = e * Math.PI * 2 * p.spin * 0.5; p.obj.rotation.z = e * Math.PI * p.spin * 0.5;
+      if (u >= 1){
+        counts[p.key] += p.box.r; addToPile(p.key, p.obj); parcels.splice(i, 1);
+        const top = pileSpot(p.key, Math.min(piles[p.key].length - 1, 8)).add(new THREE.Vector3(0, 0.2, 0));
+        puff(top, p.key === "fox" ? 0xffc9a3 : 0xb8ead3);
+        if (p.key === "fox"){ foxReact = 1; plusFoxT = 1; } else { tortReact = 1; plusTortT = 1; }
+        refreshHud();
+      }
+    }
+  }
+  if (!scanning) lampS = Math.max(0, lampS - sdt * 2.2);
+  if (phase === "run" && bi >= boxes.length && parcels.length === 0){ phase = "receipt"; phaseT = 0; printReceipt(sess, false, {i: qi + 1, n: queue.length}); }
+  if (phase === "receipt"){
+    phaseT += sdt;
+    revealReceipt(Math.floor(phaseT * 9));
+    if (phaseT > 5.2 && queue.length) nextSession();
+  }
+  const nextBelt = parcels.filter(p => p.state !== "fly").sort((a, b) => b.obj.position.x - a.obj.position.x)[0];
+  lookX += ((nextBelt ? nextBelt.obj.position.x : CHECK_X + 3) - lookX) * Math.min(1, sdt * 5);
+  for (let i = puffs.length - 1; i >= 0; i--){ const m = puffs[i], d = m.userData; d.life -= sdt; m.position.addScaledVector(d.v, sdt); d.v.y -= 3 * sdt; m.material.opacity = Math.max(0, d.life / 0.7); m.scale.setScalar(0.6 + (0.7 - d.life)); if (d.life <= 0){ scene.remove(m); m.material.dispose(); puffs.splice(i, 1); } }
+  plusFoxT = Math.max(0, plusFoxT - sdt * 1.1); plusTortT = Math.max(0, plusTortT - sdt * 1.1);
+  plusFox.material.opacity = Math.min(1, plusFoxT * 2); plusFox.position.set(fox.position.x + 0.55, 2.1 + (1 - plusFoxT) * 0.6, fox.position.z + 0.2);
+  plusTort.material.opacity = Math.min(1, plusTortT * 2); plusTort.position.set(tort.position.x + 0.6, 1.95 + (1 - plusTortT) * 0.6, tort.position.z + 0.2);
+}
+function animate(tm, dt){
+  const sdt = dt * speed;
+  setLamp(lampC, lampS);
+  const ang = Math.atan2(lookX - owl.position.x, (BELT_Z - owl.position.z));
+  owlHead.rotation.y += (THREE.MathUtils.clamp(ang, -1.1, 1.1) - owlHead.rotation.y) * Math.min(1, dt * 8);
+  owlFlap = Math.max(0, owlFlap - sdt * 1.1);
+  owlWings.forEach(w => w.pv.rotation.z = w.s * (0.08 + owlFlap * (0.7 + Math.sin(tm * 26) * 0.5)));
+  owlRig.position.y = 0.82 + owlFlap * Math.abs(Math.sin(tm * 13)) * 0.12;
+  owlHead.rotation.z = Math.sin(tm * 1.3) * 0.04;
+  bangT = Math.max(0, bangT - sdt * 0.9); bang.material.opacity = Math.min(1, bangT * 2.5); bang.scale.setScalar(0.45 + 0.15 * Math.min(1, (1 - bangT) * 6));
+  blinkT -= dt; if (blinkT < -0.12) blinkT = 2 + Math.random() * 3; const ob = blinkT < 0;
+  owlLids.forEach(l => l.scale.y = ob ? 0.95 : 0.02);
+  owlPupils.forEach(p => p.scale.setScalar(owlFlap > 0.1 ? 0.65 : 1));
+  owlBody.scale.y = 1.12 + Math.sin(tm * 2) * 0.012;
+  foxOffV += (foxOffT - foxOffV) * Math.min(1, dt * 3);
+  foxReact = Math.max(0, foxReact - sdt * 2.2);
+  const hop = Math.sin(foxReact * Math.PI);
+  foxRig.position.y = hop * 0.26; foxBody.scale.set(0.95 + hop * 0.05, 1.18 - hop * 0.06 + Math.sin(tm * 2.2) * 0.01, 0.86);
+  foxRig.rotation.x = foxOffV * 0.12;
+  foxTail.rotation.y = Math.sin(tm * (foxReact > 0.05 ? 20 : 2.6)) * (0.18 + foxReact * 0.5) * (1 - foxOffV * 0.8);
+  foxEars.forEach(e => e.rotation.x = -foxReact * 0.5 + foxOffV * 0.55);
+  foxHead.rotation.z = Math.sin(tm * 1.6) * 0.05 * (1 - foxOffV); foxHead.rotation.x = -0.08 + hop * -0.15 + foxOffV * 0.42;
+  foxArms.forEach((a, i) => a.position.y = 1.02 + Math.max(0, Math.sin(tm * 15 + i * Math.PI)) * 0.05 * (1 - foxReact) * (1 - foxOffV));
+  fBlinkT -= dt; if (fBlinkT < -0.1) fBlinkT = 2.5 + Math.random() * 3; foxEyes.forEach(e => e.scale.y = fBlinkT < 0 ? 0.15 : 1 - foxOffV * 0.55);
+  screenM.color.setScalar((0.9 + Math.sin(tm * 5) * 0.05) * (1 - foxOffV * 0.75));
+  tortReact = Math.max(0, tortReact - sdt * 0.8);
+  tHead.rotation.x = Math.sin(tortReact * Math.PI * 2) * 0.3; tHead.position.y = 1.45 + Math.sin(tm * 1.0) * 0.02 + foxOffV * 0.05;
+  tortRig.rotation.z = Math.sin(tortReact * Math.PI) * 0.04;
+  tArms.forEach((a, i) => a.rotation.x = 1.15 + Math.max(0, Math.sin(tm * (3.5 + foxOffV * 5) + i * Math.PI)) * 0.14);
+  tBlinkT -= dt; if (tBlinkT < -0.18) tBlinkT = 3 + Math.random() * 3; tEyes.forEach(e => e.scale.y = tBlinkT < 0 ? 0.15 : 1);
+}
+
+let yaw=0, yawTarget=0, idle=0;
+function layout(){ if(!renderer) return; const w=stage.clientWidth,h=stage.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+function placeCamera(t){
+  const vf=THREE.MathUtils.degToRad(camera.fov), hf=2*Math.atan(Math.tan(vf/2)*camera.aspect);
+  const narrow=camera.aspect<1.3, needW=narrow?5.0:7.5;
+  target.set(narrow?1.6:-0.3,narrow?1.0:1.05,-0.3);
+  const dist=Math.max(needW/Math.tan(hf/2), 2.6/Math.tan(vf/2));
+  const a=yaw+Math.sin(t*0.15)*0.05*(drag?0:1), el=narrow?0.5:0.46;
+  camera.position.set(target.x+Math.sin(a)*Math.cos(el)*dist, target.y+Math.sin(el)*dist, target.z+Math.cos(a)*Math.cos(el)*dist);
+  camera.lookAt(target);
+}
+function applyTheme(){
+  const cs=getComputedStyle(document.documentElement), v=n=>cs.getPropertyValue(n).trim();
+  floorMat.color=C(v("--floor")||"#F4F7F8"); sideMat.color=C(v("--floor-side")||"#AFC4CE");
+  const dark=(v("--bg")||"#fff").toLowerCase()<"#5"; // crude but fine: dark tokens start with #0/#1
+  rugFM.color=C(dark?"#5B3B28":"#F6D2B8"); rugTM.color=C(dark?"#224A39":"#BFE3D2");
+  hemi.intensity=dark?0.55:0.85; sun.intensity=dark?1.1:1.35; renderer&&(renderer.toneMappingExposure=dark?1.0:1.1);
+}
+if(renderer) new ResizeObserver(layout).observe(stage);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+let drag=null;
+stage.addEventListener("pointerdown",e=>{ drag={x:e.clientX,y0:yawTarget}; try{stage.setPointerCapture(e.pointerId);}catch(_){} });
+stage.addEventListener("pointermove",e=>{ if(drag) yawTarget=THREE.MathUtils.clamp(drag.y0-(e.clientX-drag.x)*0.005,-0.75,0.75); });
+["pointerup","pointercancel"].forEach(ev=>stage.addEventListener(ev,()=>drag=null));
+
+const tags=[{el:$("tagOwl"),obj:owl,y:2.95},{el:$("tagFox"),obj:fox,y:2.45},{el:$("tagTort"),obj:tort,y:2.2}];
+const v3=new THREE.Vector3();
+function placeTags(){ const w=stage.clientWidth,h=stage.clientHeight;
+  tags.forEach(t=>{ v3.set(t.obj.position.x,t.y,t.obj.position.z).project(camera); t.el.style.transform=`translate(${(v3.x*0.5+0.5)*w}px,${(-v3.y*0.5+0.5)*h}px) translate(-50%,-100%)`; }); }
+
+
+function setNames(f, tn){ fName = f; tName = tn; $("tagFoxName").textContent = f; $("tagTortName").textContent = tn; foxDesk.userData.setPlate(f.toUpperCase()); tortDesk.userData.setPlate(tn.toUpperCase()); }
+applyTheme(); layout();
+let tm = 0;
+function tick(dt){ if (!paused){ tm += dt; step(dt); animate(tm, dt); } yaw += (yawTarget - yaw) * Math.min(1, dt * 6); if (renderer){ placeCamera(tm); renderer.render(scene, camera); placeTags(); } }
+if (REC){ window.__mrTick = tick; }
+else {
+  let last = performance.now();
+  const frame = now => { const dt = Math.min(0.05, (now - last) / 1000); last = now; tick(dt); requestAnimationFrame(frame); };
+  requestAnimationFrame(frame);
+}
+return {
+  playGroup(g){ queue = playQueue(g); qi = 0; startSession(); },
+  playSession(s){ const q = playQueue(GROUPS[gi]); const i = q.indexOf(s); if (i >= 0){ queue = q; qi = i; } else { queue = [s]; qi = 0; } startSession(); },
+  next(){ if (queue.length) nextSession(); },
+  setNames, refreshHud, redrawGate(){ if (!handed && sess) drawGate(gateText.to(pretty(sess.segs[0].m)), "#F2C14E", "#1B232A"); },
+  settle(n){ for (let i = 0; i < n; i++){ step(0.05); } animate(0, 0); if (renderer){ placeCamera(0); renderer.render(scene, camera); placeTags(); } }
+};
+}
+
+$("langs").addEventListener("click", e => { const b = e.target.closest("button"); if (!b || !T[b.dataset.l]) return; lang = b.dataset.l; try { const u = new URL(location.href); u.searchParams.set("lang", lang); history.replaceState(null, "", u); } catch (_) {} refreshAll(false); if (player) player.redrawGate(); });
+$("file").addEventListener("change", e => { const f = e.target.files[0]; if (f) f.text().then(x => loadText(x, f.name)); e.target.value = ""; });
+$("demo").onclick = () => useDemo();
+$("sample").onclick = () => useMine(SAMPLE, "sample-receipt.json");
+$("next").onclick = () => { if (player) player.next(); };
+$("play").onclick = () => { paused = !paused; $("play").textContent = paused ? t("resume") : t("play"); $("play").setAttribute("aria-pressed", String(paused)); };
+$("speed").onchange = e => { speed = +e.target.value; };
+const stageEl = $("stage");
+let dragDepth = 0;
+stageEl.addEventListener("dragenter", e => { e.preventDefault(); dragDepth++; $("drop").hidden = false; });
+stageEl.addEventListener("dragover", e => e.preventDefault());
+stageEl.addEventListener("dragleave", () => { if (--dragDepth <= 0){ dragDepth = 0; $("drop").hidden = true; } });
+stageEl.addEventListener("drop", e => { e.preventDefault(); dragDepth = 0; $("drop").hidden = true; const f = e.dataTransfer.files[0]; if (f) f.text().then(x => loadText(x, f.name)); });
+document.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", () => {
+  const code = $(b.dataset.copy);
+  const done = () => { b.textContent = t("copied"); setTimeout(() => b.textContent = t("copy"), 1400); };
+  const fallback = () => { const r = document.createRange(); r.selectNodeContents(code); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
+  try { navigator.clipboard.writeText(code.textContent).then(done, fallback); } catch (_) { fallback(); }
+}));
+
+try { if (window.THREE) player = start3D(); } catch (e) { player = null; $("hudRun").textContent = t("noWebGL"); }
+const embedded = document.getElementById("receipt-data");
+if (embedded) { try { useMine(JSON.parse(embedded.textContent), "model-receipt.json"); } catch (e) { useDemo(); } }
+else if (QS.get("sample") === "1") useMine(SAMPLE, "sample-receipt.json");
+else useDemo();
+const qlv = +QS.get("level"); if (MODE === "demo" && QS.has("level") && qlv >= 0 && qlv <= 4) selectGroup(qlv);
+if (reduceMotion && player && !REC) { paused = true; speed = 1; $("speed").value = "1"; $("play").textContent = t("resume"); player.settle(200); }
+})();
+</script>
+</body>
+</html>

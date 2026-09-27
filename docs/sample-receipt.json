@@ -1,0 +1,724 @@
+{
+ "tool": "model-receipt",
+ "version": "1.0.0",
+ "sample": true,
+ "generated_at": "2026-09-27T12:00:00+00:00",
+ "days": 30,
+ "claude": {
+  "sessions": [
+   {
+    "id": "s006",
+    "project": "web-dashboard",
+    "started": "2026-09-02T20:00:00Z",
+    "minutes": 53.1,
+    "effort": "xhigh",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      188
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 109416
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s002",
+    "project": "web-dashboard",
+    "started": "2026-09-03T05:00:00Z",
+    "minutes": 58.5,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      135
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 46305
+    },
+    "subagent_replies": {
+     "claude-opus-5-5": 10
+    }
+   },
+   {
+    "id": "s003",
+    "project": "web-dashboard",
+    "started": "2026-09-04T04:00:00Z",
+    "minutes": 27.3,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      59
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 41064
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s013",
+    "project": "cli-tools",
+    "started": "2026-09-04T09:00:00Z",
+    "minutes": 13.8,
+    "effort": "xhigh",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      65
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 51870
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s016",
+    "project": "cli-tools",
+    "started": "2026-09-04T11:00:00Z",
+    "minutes": 55.9,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      135
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 83160
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s032",
+    "project": "side-project",
+    "started": "2026-09-04T14:00:00Z",
+    "minutes": 65.2,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      131
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 101132
+    },
+    "subagent_replies": {
+     "claude-opus-5-5": 20
+    }
+   },
+   {
+    "id": "s014",
+    "project": "cli-tools",
+    "started": "2026-09-05T19:00:00Z",
+    "minutes": 13.1,
+    "effort": "xhigh",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      33
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 8316
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s021",
+    "project": "cli-tools",
+    "started": "2026-09-06T22:00:00Z",
+    "minutes": 8.6,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      34
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 21828
+    },
+    "subagent_replies": {
+     "claude-opus-5-5": 40
+    }
+   },
+   {
+    "id": "s011",
+    "project": "web-dashboard",
+    "started": "2026-09-09T23:00:00Z",
+    "minutes": 22.9,
+    "effort": "medium",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      50
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 18650
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s024",
+    "project": "firmware-reverse",
+    "started": "2026-09-10T04:00:00Z",
+    "minutes": 50.8,
+    "effort": "max",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      123
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 98154
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s019",
+    "project": "cli-tools",
+    "started": "2026-09-11T14:00:00Z",
+    "minutes": 14.7,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      32
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 19040
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s027",
+    "project": "firmware-reverse",
+    "started": "2026-09-11T14:00:00Z",
+    "minutes": 14.4,
+    "effort": "xhigh",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      6
+     ],
+     [
+      "claude-opus-4-8",
+      50
+     ]
+    ],
+    "switches": [
+     {
+      "at": 6,
+      "from": "claude-opus-5-5",
+      "to": "claude-opus-4-8",
+      "by": "auto"
+     }
+    ],
+    "output_tokens": {
+     "claude-opus-5-5": 4404,
+     "claude-opus-4-8": 21700
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s028",
+    "project": "firmware-reverse",
+    "started": "2026-09-13T01:00:00Z",
+    "minutes": 10.1,
+    "effort": "xhigh",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      8
+     ],
+     [
+      "claude-opus-4-8",
+      25
+     ]
+    ],
+    "switches": [
+     {
+      "at": 8,
+      "from": "claude-opus-5-5",
+      "to": "claude-opus-4-8",
+      "by": "auto"
+     }
+    ],
+    "output_tokens": {
+     "claude-opus-5-5": 5360,
+     "claude-opus-4-8": 18975
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s015",
+    "project": "cli-tools",
+    "started": "2026-09-13T19:00:00Z",
+    "minutes": 62.8,
+    "effort": "medium",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      76
+     ],
+     [
+      "claude-sonnet-4-6",
+      51
+     ]
+    ],
+    "switches": [
+     {
+      "at": 76,
+      "from": "claude-opus-5-5",
+      "to": "claude-sonnet-4-6",
+      "by": "you"
+     }
+    ],
+    "output_tokens": {
+     "claude-opus-5-5": 48032,
+     "claude-sonnet-4-6": 40800
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s026",
+    "project": "firmware-reverse",
+    "started": "2026-09-14T17:00:00Z",
+    "minutes": 14.7,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      17
+     ],
+     [
+      "claude-opus-4-8",
+      33
+     ]
+    ],
+    "switches": [
+     {
+      "at": 17,
+      "from": "claude-opus-5-5",
+      "to": "claude-opus-4-8",
+      "by": "auto"
+     }
+    ],
+    "output_tokens": {
+     "claude-opus-5-5": 11798,
+     "claude-opus-4-8": 18546
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s020",
+    "project": "cli-tools",
+    "started": "2026-09-15T18:00:00Z",
+    "minutes": 20.7,
+    "effort": "xhigh",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      56
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 30520
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s001",
+    "project": "web-dashboard",
+    "started": "2026-09-15T20:00:00Z",
+    "minutes": 38.1,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      81
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 66663
+    },
+    "subagent_replies": {
+     "claude-opus-5-5": 35
+    }
+   },
+   {
+    "id": "s031",
+    "project": "side-project",
+    "started": "2026-09-16T03:00:00Z",
+    "minutes": 54.3,
+    "effort": "xhigh",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      209
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 146509
+    },
+    "subagent_replies": {
+     "claude-opus-5-5": 36
+    }
+   },
+   {
+    "id": "s022",
+    "project": "firmware-reverse",
+    "started": "2026-09-16T06:00:00Z",
+    "minutes": 13.2,
+    "effort": "xhigh",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      3
+     ],
+     [
+      "claude-opus-4-8",
+      25
+     ]
+    ],
+    "switches": [
+     {
+      "at": 3,
+      "from": "claude-opus-5-5",
+      "to": "claude-opus-4-8",
+      "by": "auto"
+     }
+    ],
+    "output_tokens": {
+     "claude-opus-5-5": 1857,
+     "claude-opus-4-8": 17525
+    },
+    "subagent_replies": {
+     "claude-opus-5-5": 21
+    }
+   },
+   {
+    "id": "s017",
+    "project": "cli-tools",
+    "started": "2026-09-16T17:00:00Z",
+    "minutes": 29.1,
+    "effort": "medium",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      100
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 53200
+    },
+    "subagent_replies": {
+     "claude-opus-5-5": 12
+    }
+   },
+   {
+    "id": "s012",
+    "project": "web-dashboard",
+    "started": "2026-09-18T02:00:00Z",
+    "minutes": 7.7,
+    "effort": "max",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      19
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 10317
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s004",
+    "project": "web-dashboard",
+    "started": "2026-09-18T06:00:00Z",
+    "minutes": 32.5,
+    "effort": "xhigh",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      100
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 61000
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s010",
+    "project": "web-dashboard",
+    "started": "2026-09-20T10:00:00Z",
+    "minutes": 41.1,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      153
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 48042
+    },
+    "subagent_replies": {
+     "claude-opus-5-5": 3
+    }
+   },
+   {
+    "id": "s005",
+    "project": "web-dashboard",
+    "started": "2026-09-21T02:00:00Z",
+    "minutes": 55.2,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      137
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 111929
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s018",
+    "project": "cli-tools",
+    "started": "2026-09-21T14:00:00Z",
+    "minutes": 46.6,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      107
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 75007
+    },
+    "subagent_replies": {
+     "claude-opus-5-5": 22
+    }
+   },
+   {
+    "id": "s029",
+    "project": "firmware-reverse",
+    "started": "2026-09-22T04:00:00Z",
+    "minutes": 36.7,
+    "effort": "medium",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      94
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 31208
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s030",
+    "project": "side-project",
+    "started": "2026-09-22T05:00:00Z",
+    "minutes": 66.1,
+    "effort": "xhigh",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      145
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 90480
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s007",
+    "project": "web-dashboard",
+    "started": "2026-09-22T14:00:00Z",
+    "minutes": 87.5,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      199
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 105669
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s025",
+    "project": "firmware-reverse",
+    "started": "2026-09-22T21:00:00Z",
+    "minutes": 42.2,
+    "effort": "medium",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      121
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 31823
+    },
+    "subagent_replies": {
+     "claude-opus-5-5": 16
+    }
+   },
+   {
+    "id": "s023",
+    "project": "firmware-reverse",
+    "started": "2026-09-24T13:00:00Z",
+    "minutes": 33.0,
+    "effort": "medium",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      20
+     ],
+     [
+      "claude-opus-4-8",
+      76
+     ]
+    ],
+    "switches": [
+     {
+      "at": 20,
+      "from": "claude-opus-5-5",
+      "to": "claude-opus-4-8",
+      "by": "auto"
+     }
+    ],
+    "output_tokens": {
+     "claude-opus-5-5": 16700,
+     "claude-opus-4-8": 52896
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s008",
+    "project": "web-dashboard",
+    "started": "2026-09-26T02:00:00Z",
+    "minutes": 15.4,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      40
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 10880
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s034",
+    "project": "side-project",
+    "started": "2026-09-26T06:00:00Z",
+    "minutes": 67.8,
+    "effort": "max",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      147
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 120099
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s033",
+    "project": "side-project",
+    "started": "2026-09-26T18:00:00Z",
+    "minutes": 47.6,
+    "effort": "xhigh",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      155
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 66960
+    },
+    "subagent_replies": {}
+   },
+   {
+    "id": "s009",
+    "project": "web-dashboard",
+    "started": "2026-09-26T21:00:00Z",
+    "minutes": 34.0,
+    "effort": "high",
+    "replies": [
+     [
+      "claude-opus-5-5",
+      72
+     ]
+    ],
+    "switches": [],
+    "output_tokens": {
+     "claude-opus-5-5": 46800
+    },
+    "subagent_replies": {
+     "claude-opus-5-5": 39
+    }
+   }
+  ]
+ },
+ "codex": {
+  "sessions": 6,
+  "turns_by_picked_model": {
+   "gpt-5.6-sol": 212,
+   "gpt-6-astra": 48
+  }
+ }
+}
