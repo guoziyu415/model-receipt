@@ -21,6 +21,7 @@ import argparse
 import collections
 import datetime as dt
 import glob
+import gzip
 import hashlib
 import json
 import os
@@ -44,8 +45,9 @@ def parse_time(s):
 
 
 def read_jsonl(path):
+    opener = gzip.open if path.endswith(".gz") else open
     try:
-        with open(path, encoding="utf-8", errors="ignore") as f:
+        with opener(path, "rt", encoding="utf-8", errors="ignore") as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -123,7 +125,7 @@ def walk_jsonl(root, deep=False):
             keep.append(d)
         dirnames[:] = keep
         for fn in filenames:
-            if fn.endswith(".jsonl"):
+            if fn.endswith(".jsonl") or fn.endswith(".jsonl.gz"):
                 p = os.path.join(dirpath, fn)
                 try:
                     if os.path.getsize(p) <= MAX_FILE:
@@ -135,7 +137,7 @@ def walk_jsonl(root, deep=False):
 def looks_like_claude_log(path):
     """True if the first 200 lines contain a Claude reply with a model name."""
     for i, d in enumerate(read_jsonl(path)):
-        if i > 200:
+        if i > 5000:
             return False
         msg = d.get("message")
         if d.get("type") == "assistant" and isinstance(msg, dict) and str(msg.get("model", "")).startswith("claude"):
@@ -145,10 +147,13 @@ def looks_like_claude_log(path):
     return False
 
 
-def scan_claude(roots, since, deep=False):
-    """One entry per main session file. Subagent files are counted with their session."""
+def scan_claude(roots, since, deep=False, trusted=()):
+    """One entry per main session file. Subagent files are counted with their session.
+    Files under trusted roots are read as session logs without the format check."""
     sessions, seen, sources = [], set(), collections.Counter()
+    trusted = {os.path.realpath(t) for t in trusted}
     for root in roots:
+        is_trusted = os.path.realpath(root) in trusted
         if not os.path.isdir(root):
             continue
         for path in walk_jsonl(root, deep):
@@ -157,7 +162,7 @@ def scan_claude(roots, since, deep=False):
                 continue
             seen.add(real)
             try:
-                if not root.endswith(os.path.join(".claude", "projects")) and not looks_like_claude_log(path):
+                if not is_trusted and not looks_like_claude_log(path):
                     continue
                 s = scan_claude_session(path, since)
             except Exception:
@@ -235,8 +240,9 @@ def scan_claude_session(path, since):
         return None
     # subagents live next to the session file
     sub = collections.Counter()
-    subdir = os.path.join(path[:-len(".jsonl")], "subagents")
-    for sp in glob.glob(os.path.join(subdir, "*.jsonl")):
+    base = path[:-len(".jsonl.gz")] if path.endswith(".jsonl.gz") else path[:-len(".jsonl")]
+    subdir = os.path.join(base, "subagents")
+    for sp in glob.glob(os.path.join(subdir, "*.jsonl")) + glob.glob(os.path.join(subdir, "*.jsonl.gz")):
         sseen = set()
         for d in read_jsonl(sp):
             if d.get("type") != "assistant":
@@ -374,11 +380,13 @@ def build(args):
     data = {"tool": "model-receipt", "version": VERSION,
             "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
             "days": args.days}
-    roots = default_claude_roots() + [os.path.expanduser(d) for d in (args.claude_dir or [])]
+    extra = [os.path.expanduser(d) for d in (args.claude_dir or [])]
+    roots = default_claude_roots() + extra
+    trusted = [r for r in roots if r.endswith("projects")] + extra
     if args.find_all:
         roots.append(os.path.expanduser("~"))
     if any(os.path.isdir(r) for r in roots):
-        sessions, sources = scan_claude(roots, since, deep=args.find_all)
+        sessions, sources = scan_claude(roots, since, deep=args.find_all, trusted=trusted)
         if args.anonymize:
             names = {}
             for s in sessions:

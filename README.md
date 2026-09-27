@@ -70,7 +70,7 @@ python3 model_receipt.py view
 |---|---|
 | `--days N` | Only sessions that started in the last N days |
 | `--find-all` | Search your whole home folder for Claude session logs. Slower, finds logs kept in unusual places |
-| `--claude-dir DIR` | Also scan this folder. Repeat it for more folders |
+| `--claude-dir DIR` | Also scan this folder, including gzipped `.jsonl.gz` logs. Repeat it for more folders |
 | `--anonymize` | Replace project names with `project 1`, `project 2` and so on, before you share the file |
 | `--no-codex` | Skip Codex logs |
 | `-o FILE` | Where to write the JSON. Default `model-receipt.json` |
@@ -84,7 +84,10 @@ python3 model_receipt.py view
 | `~/Library/Application Support/Claude` on macOS | Sessions the Claude desktop app keeps on your computer |
 | `~/.codex/sessions` | Codex sessions |
 
-**Cloud sessions are not on your computer.** If you use Claude Code on the web or cloud tasks in the Claude app, the log lives in that cloud environment. Ask Claude to run `python3 model_receipt.py` inside that session to get its receipt.
+**Cloud sessions are not on your computer.** If you use Claude Code on the web or cloud tasks in the Claude app, the log lives in that cloud environment. Two ways to count them:
+
+- Ask Claude to run `python3 model_receipt.py` inside that session.
+- Or ask Claude to copy the session log to your computer, for example gzipped into `~/claude-cloud-logs/`, then run `python3 model_receipt.py --claude-dir ~/claude-cloud-logs`. Gzipped logs (`.jsonl.gz`) are read directly.
 
 ## How it works
 
